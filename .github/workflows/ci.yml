@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+          
+    - name: Cache build artifacts
+      uses: actions/cache@v4
+      with:
+        path: artifacts/
+        key: ${{ runner.os }}-build-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-build-
+          
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build solution
+      run: dotnet build --no-restore --configuration Release
+      
+    - name: Create TestResults directory
+      run: mkdir -p TestResults
+      
+    - name: Run standard tests
+      run: dotnet test --no-build --configuration Release --verbosity normal --logger trx --results-directory ./TestResults
+      
+    - name: Run UXUnit Runtime Tests
+      run: dotnet run --project test/UXUnit.Runtime.Tests/UXUnit.Runtime.Tests.csproj --no-build --configuration Release
+      
+    - name: Run compatibility baseline tests
+      run: |
+        cd test
+        chmod +x compare-compat-outputs.sh
+        ./compare-compat-outputs.sh baseline
+        
+    - name: Run full compatibility comparison (may fail as expected)
+      continue-on-error: true
+      run: |
+        cd test
+        ./compare-compat-outputs.sh compare || echo "Compatibility comparison failed as expected (UXUnit generator not yet complete)"
+      
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.os }}
+        path: |
+          ./TestResults/*.trx
+          ./artifacts/.comparison-outputs/
+        retention-days: 30
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: build-artifacts-${{ matrix.os }}
+        path: artifacts/
+        retention-days: 30
+
+  windows-build-test:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+          
+    - name: Cache build artifacts
+      uses: actions/cache@v4
+      with:
+        path: artifacts/
+        key: ${{ runner.os }}-build-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-build-
+          
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build solution
+      run: dotnet build --no-restore --configuration Release
+      
+    - name: Create TestResults directory
+      run: mkdir TestResults
+      
+    - name: Run standard tests
+      run: dotnet test --no-build --configuration Release --verbosity normal --logger trx --results-directory ./TestResults
+      
+    - name: Run UXUnit Runtime Tests
+      run: dotnet run --project test/UXUnit.Runtime.Tests/UXUnit.Runtime.Tests.csproj --no-build --configuration Release
+      
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-windows-latest
+        path: |
+          ./TestResults/*.trx
+        retention-days: 30
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: build-artifacts-windows-latest
+        path: artifacts/
+        retention-days: 30

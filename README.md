@@ -1,5 +1,7 @@
 # UXUnit - Source-Generated Unit Testing Framework
 
+[![CI](https://github.com/agocke/uxunit/actions/workflows/ci.yml/badge.svg)](https://github.com/agocke/uxunit/actions/workflows/ci.yml)
+
 A modern, source-generated replacement for xUnit that provides compile-time test discovery, enhanced performance, and improved developer experience.
 
 ## Overview
