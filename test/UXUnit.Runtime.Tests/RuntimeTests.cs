@@ -26,7 +26,7 @@ public class BasicRuntimeTests
         // This test is intentionally designed to fail for testing purposes
         // Uncomment the line below to see failure handling
         // Assert.Equal(5, 2 + 2);
-        
+
         // For now, we'll make it pass so the test suite passes
         Assert.True(true);
     }
@@ -58,7 +58,7 @@ public class BasicRuntimeTests
     {
         Console.WriteLine("This is test output");
         Console.WriteLine("Multiple lines of output");
-        
+
         Assert.True(true);
     }
 
@@ -163,7 +163,7 @@ public class ExceptionHandlingTests
         {
             var _ = Math.Sqrt(i);
         }
-        
+
         Assert.True(true);
     }
 
@@ -172,7 +172,7 @@ public class ExceptionHandlingTests
     {
         // Simulate async work that completes quickly
         await Task.Delay(10);
-        
+
         Assert.True(true);
     }
 }

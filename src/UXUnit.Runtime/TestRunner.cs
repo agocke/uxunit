@@ -15,17 +15,14 @@ namespace UXUnit.Runtime;
 public class TestRunner : ITestRunner
 {
     private readonly ITestOutput _output;
-    private readonly IServiceProvider _services;
 
     /// <summary>
     /// Initializes a new instance of the TestRunner.
     /// </summary>
     /// <param name="output">Test output writer. If null, uses console output.</param>
-    /// <param name="services">Service provider for dependency injection. If null, uses empty provider.</param>
-    public TestRunner(ITestOutput? output = null, IServiceProvider? services = null)
+    public TestRunner(ITestOutput? output = null)
     {
         _output = output ?? new ConsoleTestOutput();
-        _services = services ?? EmptyServiceProvider.Instance;
     }
 
     /// <summary>
@@ -43,7 +40,7 @@ public class TestRunner : ITestRunner
         var runId = Guid.NewGuid().ToString();
         var startTime = DateTime.UtcNow;
         var runners = testClassRunners.ToList();
-        
+
         _output.WriteLine($"UXUnit Test Run Started - ID: {runId}");
         _output.WriteLine($"Discovered {runners.Count} test classes");
         _output.WriteLine(string.Empty);
@@ -175,7 +172,7 @@ public class TestRunner : ITestRunner
             {
                 _output.WriteLine($"Skipping test class {runner.Metadata.ClassName}: {runner.Metadata.SkipReason}");
                 return runner.Metadata.TestMethods
-                    .Select(m => TestResult.Skipped($"{runner.Metadata.ClassName}.{m.MethodName}", 
+                    .Select(m => TestResult.Skipped($"{runner.Metadata.ClassName}.{m.MethodName}",
                         m.MethodName, runner.Metadata.SkipReason ?? "Class skipped"))
                     .ToArray();
             }
@@ -194,10 +191,10 @@ public class TestRunner : ITestRunner
         catch (Exception ex)
         {
             _output.WriteLine($"Error running test class {runner.Metadata.ClassName}: {ex.Message}");
-            
+
             // Create failure results for all methods in the class
             return runner.Metadata.TestMethods
-                .Select(m => TestResult.Failure($"{runner.Metadata.ClassName}.{m.MethodName}", 
+                .Select(m => TestResult.Failure($"{runner.Metadata.ClassName}.{m.MethodName}",
                     m.MethodName, ex, TimeSpan.Zero, DateTime.UtcNow, DateTime.UtcNow))
                 .ToArray();
         }
@@ -209,14 +206,13 @@ public class TestRunner : ITestRunner
             className: classMetadata.ClassName,
             assemblyName: GetAssemblyName(classMetadata),
             output: _output,
-            services: configuration.Services,
             cancellationToken: CancellationToken.None);
     }
 
     private static string GetAssemblyName(TestClassMetadata classMetadata)
     {
         // Try to extract assembly name, fallback to a default
-        return classMetadata.Properties.TryGetValue("AssemblyName", out var name) 
+        return classMetadata.Properties.TryGetValue("AssemblyName", out var name)
             ? name?.ToString() ?? "Unknown"
             : "Unknown";
     }
@@ -266,7 +262,7 @@ public class TestRunner : ITestRunner
         _output.WriteLine($"Passed: {result.Summary.PassedTests}");
         _output.WriteLine($"Failed: {result.Summary.FailedTests}");
         _output.WriteLine($"Skipped: {result.Summary.SkippedTests}");
-        
+
         if (result.Summary.InconclusiveTests > 0)
         {
             _output.WriteLine($"Inconclusive: {result.Summary.InconclusiveTests}");

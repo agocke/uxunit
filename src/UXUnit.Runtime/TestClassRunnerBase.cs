@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -27,12 +26,12 @@ public abstract class TestClassRunnerBase : ITestClassRunner
     public virtual async Task<TestResult[]> RunAllTestsAsync(ITestContext context, CancellationToken cancellationToken = default)
     {
         var results = new TestResult[Metadata.TestMethods.Count];
-        
+
         for (int i = 0; i < Metadata.TestMethods.Count; i++)
         {
             var method = Metadata.TestMethods[i];
             results[i] = await RunTestAsync(method.MethodName, context, cancellationToken);
-            
+
             if (cancellationToken.IsCancellationRequested)
                 break;
         }
@@ -75,12 +74,12 @@ public abstract class TestClassRunnerBase : ITestClassRunner
     protected virtual async Task<TestResult> RunSingleTest(TestMethodMetadata metadata, ITestContext context, CancellationToken cancellationToken)
     {
         var testInstance = CreateTestInstance();
-        var methodInfo = GetMethodInfo(metadata.MethodName);
+        var testMethodDelegate = GetTestMethodDelegate(metadata.MethodName);
 
         try
         {
             await ExecuteClassSetup(testInstance, context);
-            var result = await TestExecutor.ExecuteTestAsync(testInstance, methodInfo, metadata, context, null, cancellationToken);
+            var result = await TestExecutor.ExecuteTestAsync(testInstance, testMethodDelegate, metadata, context, null, cancellationToken);
             await ExecuteClassCleanup(testInstance, context);
             return result;
         }
@@ -95,7 +94,7 @@ public abstract class TestClassRunnerBase : ITestClassRunner
     /// </summary>
     protected virtual async Task<TestResult> RunParameterizedTest(TestMethodMetadata metadata, ITestContext context, CancellationToken cancellationToken)
     {
-        var methodInfo = GetMethodInfo(metadata.MethodName);
+        var parameterizedTestMethodDelegate = GetParameterizedTestMethodDelegate(metadata.MethodName);
         var allResults = new TestResult[metadata.TestCases.Count];
 
         for (int i = 0; i < metadata.TestCases.Count; i++)
@@ -115,7 +114,7 @@ public abstract class TestClassRunnerBase : ITestClassRunner
                 }
                 else
                 {
-                    allResults[i] = await TestExecutor.ExecuteTestAsync(testInstance, methodInfo, metadata, context, testCase.Arguments, cancellationToken);
+                    allResults[i] = await TestExecutor.ExecuteParameterizedTestAsync(testInstance, parameterizedTestMethodDelegate, metadata, context, testCase.Arguments, cancellationToken);
                 }
 
                 await ExecuteClassCleanup(testInstance, context);
@@ -132,8 +131,8 @@ public abstract class TestClassRunnerBase : ITestClassRunner
         // For parameterized tests, we return the first failure or the last result if all passed
         var firstFailure = allResults.FirstOrDefault(r => r.Status == TestStatus.Failed);
         return firstFailure ?? allResults.LastOrDefault() ?? TestResult.Skipped(
-            GenerateTestId(context.ClassName, metadata.MethodName, null), 
-            metadata.MethodName, 
+            GenerateTestId(context.ClassName, metadata.MethodName, null),
+            metadata.MethodName,
             "No test cases executed");
     }
 
@@ -143,61 +142,31 @@ public abstract class TestClassRunnerBase : ITestClassRunner
     protected abstract object CreateTestInstance();
 
     /// <summary>
-    /// Gets the MethodInfo for the specified test method. Override this method in generated classes.
+    /// Gets the test method delegate for the specified test method. Override this method in generated classes.
     /// </summary>
-    protected abstract MethodInfo GetMethodInfo(string methodName);
+    protected abstract Func<object, Task> GetTestMethodDelegate(string methodName);
 
     /// <summary>
-    /// Executes class-level setup methods.
+    /// Gets the parameterized test method delegate for the specified test method. Override this method in generated classes.
+    /// </summary>
+    protected abstract Func<object, object?[], Task> GetParameterizedTestMethodDelegate(string methodName);
+
+    /// <summary>
+    /// Executes class-level setup methods. Override in generated classes to call specific setup methods.
     /// </summary>
     protected virtual async Task ExecuteClassSetup(object testInstance, ITestContext context)
     {
-        // Execute any class setup methods
-        var setupMethods = testInstance.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
-            .Where(m => m.GetCustomAttributes().Any(a => a.GetType().Name == "ClassSetupAttribute" || a.GetType().Name == "OneTimeSetUpAttribute"))
-            .ToArray();
-
-        foreach (var setupMethod in setupMethods)
-        {
-            try
-            {
-                var result = setupMethod.Invoke(setupMethod.IsStatic ? null : testInstance, null);
-                if (result is Task setupTask)
-                {
-                    await setupTask;
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Class setup method '{setupMethod.Name}' failed: {ex.Message}", ex);
-            }
-        }
+        // No default setup - override in generated classes
+        await Task.CompletedTask;
     }
 
     /// <summary>
-    /// Executes class-level cleanup methods.
+    /// Executes class-level cleanup methods. Override in generated classes to call specific cleanup methods.
     /// </summary>
     protected virtual async Task ExecuteClassCleanup(object testInstance, ITestContext context)
     {
-        var cleanupMethods = testInstance.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
-            .Where(m => m.GetCustomAttributes().Any(a => a.GetType().Name == "ClassCleanupAttribute" || a.GetType().Name == "OneTimeTearDownAttribute"))
-            .ToArray();
-
-        foreach (var cleanupMethod in cleanupMethods)
-        {
-            try
-            {
-                var result = cleanupMethod.Invoke(cleanupMethod.IsStatic ? null : testInstance, null);
-                if (result is Task cleanupTask)
-                {
-                    await cleanupTask;
-                }
-            }
-            catch (Exception ex)
-            {
-                context.WriteLine($"Warning: Class cleanup method '{cleanupMethod.Name}' failed: {ex.Message}");
-            }
-        }
+        // No default cleanup - override in generated classes
+        await Task.CompletedTask;
     }
 
     /// <summary>
@@ -211,8 +180,8 @@ public abstract class TestClassRunnerBase : ITestClassRunner
         }
 
         // Fallback: create a new context
-        return new TestContext(testName, classContext.ClassName, classContext.AssemblyName, 
-            classContext.GetTestOutput(), classContext.GetServiceProvider(), classContext.CancellationToken);
+        return new TestContext(testName, classContext.ClassName, classContext.AssemblyName,
+            classContext.GetTestOutput(), classContext.CancellationToken);
     }
 
     /// <summary>
@@ -240,7 +209,7 @@ public abstract class TestClassRunnerBase : ITestClassRunner
     protected static string GenerateTestId(string className, string methodName, object?[]? arguments)
     {
         var baseId = $"{className}.{methodName}";
-        
+
         if (arguments != null && arguments.Length > 0)
         {
             var argString = string.Join(",", arguments.Select(a => a?.ToString() ?? "null"));
@@ -262,13 +231,5 @@ public static class TestContextExtensions
     public static ITestOutput GetTestOutput(this ITestContext context)
     {
         return context is TestContext testContext ? testContext.Output : NullTestOutput.Instance;
-    }
-
-    /// <summary>
-    /// Gets the service provider from the context.
-    /// </summary>
-    public static IServiceProvider GetServiceProvider(this ITestContext context)
-    {
-        return context is TestContext testContext ? testContext.Services : EmptyServiceProvider.Instance;
     }
 }

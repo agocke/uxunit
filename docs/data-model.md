@@ -149,10 +149,9 @@ public sealed class TestContext : ITestContext
     public string AssemblyName { get; }
     public CancellationToken CancellationToken { get; }
     public ITestOutput Output { get; }
-    public IServiceProvider Services { get; }
-    
+
     private readonly Dictionary<string, object?> _properties = new();
-    
+
     public void WriteLine(string message) => Output.WriteLine(message);
     public void WriteLine(string format, params object[] args) => Output.WriteLine(format, args);
     public void AddProperty(string name, object? value) => _properties[name] = value;
@@ -196,7 +195,7 @@ public sealed class TestExecution
     public string? SkipReason { get; private set; }
     public int AttemptNumber { get; private set; } = 1;
     public TestContext Context { get; init; } = default!;
-    
+
     public void MarkStarted() => (State, StartTime) = (TestExecutionState.Running, DateTime.UtcNow);
     public void MarkCompleted() => (State, EndTime) = (TestExecutionState.Completed, DateTime.UtcNow);
     public void MarkFailed(Exception exception) => (State, EndTime, Exception) = (TestExecutionState.Failed, DateTime.UtcNow, exception);
@@ -241,16 +240,16 @@ public sealed class TestResult
     public IReadOnlyList<string> OutputLines { get; init; } = Array.Empty<string>();
     public IReadOnlyDictionary<string, object?> Properties { get; init; } = new Dictionary<string, object?>();
     public object?[]? TestCaseArguments { get; init; }
-    
+
     public static TestResult Success(string testId, string testName, TimeSpan duration, DateTime startTime, DateTime endTime) =>
         new() { TestId = testId, TestName = testName, Status = TestStatus.Passed, Duration = duration, StartTime = startTime, EndTime = endTime };
-    
+
     public static TestResult Failure(string testId, string testName, Exception exception, TimeSpan duration, DateTime startTime, DateTime endTime) =>
-        new() { 
+        new() {
             TestId = testId, TestName = testName, Status = TestStatus.Failed, Duration = duration, StartTime = startTime, EndTime = endTime,
             ErrorMessage = exception.Message, ErrorType = exception.GetType().FullName, StackTrace = exception.StackTrace
         };
-    
+
     public static TestResult Skipped(string testId, string testName, string reason) =>
         new() { TestId = testId, TestName = testName, Status = TestStatus.Skipped, SkipReason = reason };
 }
@@ -277,7 +276,7 @@ public sealed class TestRunResult
     public IReadOnlyList<TestResult> TestResults { get; init; } = Array.Empty<TestResult>();
     public TestRunSummary Summary { get; init; } = new();
     public IReadOnlyDictionary<string, object?> Properties { get; init; } = new Dictionary<string, object?>();
-    
+
     public int TotalTests => TestResults.Count;
     public int PassedTests => TestResults.Count(r => r.Status == TestStatus.Passed);
     public int FailedTests => TestResults.Count(r => r.Status == TestStatus.Failed);
@@ -310,7 +309,7 @@ public sealed class GenerationContext
     public INamedTypeSymbol[] TestClasses { get; }
     public GeneratorExecutionContext ExecutionContext { get; }
     public CancellationToken CancellationToken => ExecutionContext.CancellationToken;
-    
+
     public void ReportDiagnostic(Diagnostic diagnostic) => ExecutionContext.ReportDiagnostic(diagnostic);
     public void AddSource(string fileName, string sourceText) => ExecutionContext.AddSource(fileName, sourceText);
 }
@@ -385,7 +384,6 @@ public sealed class TestRunConfiguration
     public TestFilter Filter { get; init; } = TestFilter.All;
     public ParallelExecutionSettings ParallelSettings { get; init; } = new();
     public ITestOutput Output { get; init; } = NullTestOutput.Instance;
-    public IServiceProvider Services { get; init; } = EmptyServiceProvider.Instance;
     public bool StopOnFirstFailure { get; init; } = false;
     public TimeSpan? GlobalTimeout { get; init; }
 }
@@ -408,9 +406,9 @@ public abstract class TestFilter
     public static TestFilter ByName(string pattern) => new NamePatternFilter(pattern);
     public static TestFilter ByCategory(string category) => new CategoryFilter(category);
     public static TestFilter ByClass(string className) => new ClassFilter(className);
-    
+
     public abstract bool ShouldRun(TestMethodMetadata test);
-    
+
     public static TestFilter operator &(TestFilter left, TestFilter right) => new CompositeFilter(left, right, FilterOperator.And);
     public static TestFilter operator |(TestFilter left, TestFilter right) => new CompositeFilter(left, right, FilterOperator.Or);
     public static TestFilter operator !(TestFilter filter) => new NotFilter(filter);
@@ -432,7 +430,7 @@ internal sealed class CategoryFilter : TestFilter
 {
     private readonly string _category;
     public CategoryFilter(string category) => _category = category;
-    public override bool ShouldRun(TestMethodMetadata test) => 
+    public override bool ShouldRun(TestMethodMetadata test) =>
         !test.Skip && string.Equals(test.Category, _category, StringComparison.OrdinalIgnoreCase);
 }
 ```
@@ -463,7 +461,7 @@ public sealed class TestResultJson
     public string[] OutputLines { get; set; } = Array.Empty<string>();
     public Dictionary<string, object?> Properties { get; set; } = new();
     public object?[]? TestCaseArguments { get; set; }
-    
+
     public static TestResultJson FromTestResult(TestResult result) => new()
     {
         TestId = result.TestId,
@@ -485,7 +483,7 @@ public sealed class TestResultJson
         Properties = new Dictionary<string, object?>(result.Properties),
         TestCaseArguments = result.TestCaseArguments
     };
-    
+
     public TestResult ToTestResult() => new()
     {
         TestId = TestId,
@@ -525,31 +523,31 @@ public static class UXUnitDiagnostics
         "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
-    
+
     public static readonly DiagnosticDescriptor TestMethodMustNotBeGeneric = new(
-        "UX0002", 
+        "UX0002",
         "Test method cannot be generic",
         "Test method '{0}' cannot be generic. Consider using TestData attributes for parameterized tests",
         "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
-    
+
     public static readonly DiagnosticDescriptor InvalidSetupMethodSignature = new(
         "UX0003",
-        "Invalid setup method signature", 
+        "Invalid setup method signature",
         "Setup method '{0}' has an invalid signature. Setup methods must be public and return void or Task",
         "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
-    
+
     public static readonly DiagnosticDescriptor TestDataParameterMismatch = new(
         "UX0004",
         "Test data parameter count mismatch",
         "TestData attribute provides {0} arguments but test method '{1}' expects {2} parameters",
-        "Usage", 
+        "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
-    
+
     public static readonly DiagnosticDescriptor DuplicateLifecycleMethod = new(
         "UX0005",
         "Duplicate lifecycle method",
@@ -557,11 +555,11 @@ public static class UXUnitDiagnostics
         "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
-    
+
     public static readonly DiagnosticDescriptor TestClassMustHaveDefaultConstructor = new(
         "UX0006",
         "Test class must have accessible constructor",
-        "Test class '{0}' must have a public parameterless constructor or a constructor with dependency injection parameters",
+        "Test class '{0}' must have a public parameterless constructor",
         "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);

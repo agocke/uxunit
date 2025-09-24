@@ -420,11 +420,6 @@ public sealed class TestRunConfiguration
     public ITestOutput Output { get; init; } = NullTestOutput.Instance;
 
     /// <summary>
-    /// Gets or sets the service provider for dependency injection.
-    /// </summary>
-    public IServiceProvider Services { get; init; } = EmptyServiceProvider.Instance;
-
-    /// <summary>
     /// Gets or sets whether to stop execution on the first test failure.
     /// </summary>
     public bool StopOnFirstFailure { get; init; } = false;
@@ -451,10 +446,4 @@ public sealed class NullTestOutput : ITestOutput
     public static readonly NullTestOutput Instance = new();
     public void WriteLine(string message) { }
     public void WriteLine(string format, params object[] args) { }
-}
-
-public sealed class EmptyServiceProvider : IServiceProvider
-{
-    public static readonly EmptyServiceProvider Instance = new();
-    public object? GetService(Type serviceType) => null;
 }

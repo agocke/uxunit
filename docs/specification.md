@@ -13,7 +13,7 @@ A test class is a class marked with the `[TestClass]` attribute that contains on
 #### Requirements
 - Must be marked with `[TestClass]` attribute
 - Must be public or internal
-- Must have a parameterless constructor or constructor with dependency injection parameters
+- Must have a parameterless constructor
 - May contain setup and cleanup methods
 - May inherit from base classes (inheritance is supported)
 
@@ -188,7 +188,7 @@ Executes a test multiple times.
 public class RepeatAttribute : Attribute
 {
     public int Count { get; }
-    
+
     public RepeatAttribute(int count)
     {
         if (count <= 0) throw new ArgumentException("Count must be positive");
@@ -206,7 +206,7 @@ public class RetryAttribute : Attribute
 {
     public int MaxAttempts { get; }
     public int DelayMs { get; set; } = 0;
-    
+
     public RetryAttribute(int maxAttempts = 3)
     {
         if (maxAttempts <= 0) throw new ArgumentException("MaxAttempts must be positive");
@@ -322,7 +322,7 @@ public class TestDataSourceAttribute : Attribute
 {
     public string MemberName { get; }
     public Type? MemberType { get; set; }
-    
+
     public TestDataSourceAttribute(string memberName)
     {
         MemberName = memberName;
@@ -358,7 +358,7 @@ public class CsvDataAttribute : Attribute
     public string FilePath { get; }
     public bool HasHeaders { get; set; } = true;
     public string Delimiter { get; set; } = ",";
-    
+
     public CsvDataAttribute(string filePath)
     {
         FilePath = filePath;
@@ -375,7 +375,7 @@ public class JsonDataAttribute : Attribute
 {
     public string FilePath { get; }
     public string? PropertyPath { get; set; }
-    
+
     public JsonDataAttribute(string filePath)
     {
         FilePath = filePath;
@@ -413,11 +413,11 @@ public class GroupedTests
     [Test]
     [Parallel(Group = "Database")]
     public void DatabaseTest1() { }
-    
+
     [Test]
     [Parallel(Group = "Database")]
     public void DatabaseTest2() { }
-    
+
     [Test] // Can run in parallel with any other test
     public void IndependentTest() { }
 }
@@ -541,7 +541,7 @@ public static class CustomAssertions
     {
         return builder.Matches(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", "Expected a valid email address");
     }
-    
+
     public static AssertionBuilder<T> SatisfiesCondition<T>(
         this AssertionBuilder<T> builder,
         Func<T, bool> predicate,
@@ -563,7 +563,7 @@ public class DatabaseTestAttribute : Attribute, ITestMethodAttribute
     {
         // Setup database transaction
     }
-    
+
     public void OnAfterTest(ITestContext context, TestResult result)
     {
         // Rollback database transaction
@@ -596,7 +596,7 @@ public class CalculatorTests
         var result = new Calculator().Add(2, 3);
         Assert.Equal(5, result);
     }
-    
+
     [Theory]
     [InlineData(1, 2, 3)]
     [InlineData(5, 7, 12)]
@@ -619,7 +619,7 @@ public class CalculatorTests
         var result = new Calculator().Add(2, 3);
         Assert.That(result).IsEqualTo(5);
     }
-    
+
     [Test]
     [TestData(1, 2, 3)]
     [TestData(5, 7, 12)]

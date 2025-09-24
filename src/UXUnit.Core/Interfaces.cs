@@ -109,9 +109,9 @@ public interface ITestDataSource
     /// <summary>
     /// Gets the test data for the specified method.
     /// </summary>
-    /// <param name="methodInfo">The test method information.</param>
+    /// <param name="methodMetadata">The test method metadata.</param>
     /// <returns>An enumerable of test data arrays.</returns>
-    IEnumerable<object?[]> GetTestData(System.Reflection.MethodInfo methodInfo);
+    IEnumerable<object?[]> GetTestData(TestMethodMetadata methodMetadata);
 }
 
 /// <summary>

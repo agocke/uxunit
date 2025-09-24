@@ -19,21 +19,18 @@ public sealed class TestContext : ITestContext
     /// <param name="className">The name of the test class.</param>
     /// <param name="assemblyName">The name of the test assembly.</param>
     /// <param name="output">The test output writer.</param>
-    /// <param name="services">The service provider.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     public TestContext(
         string testName,
         string className,
         string assemblyName,
         ITestOutput output,
-        IServiceProvider services,
         CancellationToken cancellationToken)
     {
         TestName = testName;
         ClassName = className;
         AssemblyName = assemblyName;
         Output = output;
-        Services = services;
         CancellationToken = cancellationToken;
     }
 
@@ -43,15 +40,13 @@ public sealed class TestContext : ITestContext
     /// <param name="className">The name of the test class.</param>
     /// <param name="assemblyName">The name of the test assembly.</param>
     /// <param name="output">The test output writer.</param>
-    /// <param name="services">The service provider.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     public TestContext(
         string className,
         string assemblyName,
         ITestOutput output,
-        IServiceProvider services,
         CancellationToken cancellationToken)
-        : this(string.Empty, className, assemblyName, output, services, cancellationToken)
+        : this(string.Empty, className, assemblyName, output, cancellationToken)
     {
     }
 
@@ -79,11 +74,6 @@ public sealed class TestContext : ITestContext
     /// Gets the test output writer.
     /// </summary>
     public ITestOutput Output { get; }
-
-    /// <summary>
-    /// Gets the service provider.
-    /// </summary>
-    public IServiceProvider Services { get; }
 
     /// <summary>
     /// Gets all properties from the test context.
@@ -137,8 +127,8 @@ public sealed class TestContext : ITestContext
     /// <returns>A new test context with the specified test name.</returns>
     public TestContext ForTest(string testName)
     {
-        var context = new TestContext(testName, ClassName, AssemblyName, Output, Services, CancellationToken);
-        
+        var context = new TestContext(testName, ClassName, AssemblyName, Output, CancellationToken);
+
         // Copy existing properties
         foreach (var property in _properties)
         {
