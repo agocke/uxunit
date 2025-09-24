@@ -14,7 +14,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UXUNIT_DIR="$SCRIPT_DIR/Assets/UXUnitCompat"
 XUNIT_DIR="$SCRIPT_DIR/Assets/XUnitCompat"
-OUTPUT_DIR="$SCRIPT_DIR/.comparison-outputs"
+OUTPUT_DIR="$SCRIPT_DIR/../artifacts/.comparison-outputs"
 
 # Colors for output
 RED='\033[0;31m'
