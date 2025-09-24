@@ -1,0 +1,75 @@
+# Unified Artifacts Directory (managed by Directory.Build.props)
+artifacts/
+
+# Legacy build outputs (should not be created with unified artifacts)
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# Visual Studio
+*.suo
+*.user
+*.sln.docstates
+*.userprefs
+*.[Cc]ache
+*.VisualState.xml
+.vs/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Package manager
+packages/
+*.nupkg
+*.snupkg
+
+# NuGet
+*.nuget.props
+*.nuget.targets
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Logs
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE - VSCode
+.vscode/
+
+# Coverage reports
+coverage/
+*.coverage
+*.coveragexml
+
+# Test results
+TestResults/
+*.trx
+*.xml
+
+# Test comparison outputs
+test/Assets/.comparison-outputs/

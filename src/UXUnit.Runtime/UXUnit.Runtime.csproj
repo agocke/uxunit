@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>UXUnit.Runtime</PackageId>
+    <PackageVersion>1.0.0</PackageVersion>
+    <Title>UXUnit Runtime</Title>
+    <Description>Runtime engine for the UXUnit testing framework</Description>
+    <Authors>UXUnit Team</Authors>
+    <Copyright>© UXUnit Team</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/uxunit/uxunit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/uxunit/uxunit</RepositoryUrl>
+    <PackageTags>testing;unit-testing;dotnet</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../UXUnit.Core/UXUnit.Core.csproj" />
+  </ItemGroup>
+
+</Project>

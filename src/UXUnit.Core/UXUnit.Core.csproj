@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>UXUnit.Core</PackageId>
+    <PackageVersion>1.0.0</PackageVersion>
+    <Title>UXUnit Core</Title>
+    <Description>Core types and attributes for the UXUnit source-generated testing framework</Description>
+    <Authors>UXUnit Team</Authors>
+    <Copyright>© UXUnit Team</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/uxunit/uxunit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/uxunit/uxunit</RepositoryUrl>
+    <PackageTags>testing;unit-testing;source-generator;dotnet</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
