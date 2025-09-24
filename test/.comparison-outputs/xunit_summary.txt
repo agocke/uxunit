@@ -1,0 +1,3 @@
+Test Run Successful.
+Total tests: 12
+ Total time: X.X s

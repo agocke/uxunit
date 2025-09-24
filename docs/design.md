@@ -28,7 +28,7 @@ graph TB
     B --> C[Generated Test Runner]
     C --> D[UXUnit Runtime]
     D --> E[Test Results]
-    
+
     F[UXUnit.Core] --> B
     G[UXUnit.Assertions] --> A
     H[UXUnit.Attributes] --> A
@@ -89,11 +89,11 @@ internal sealed class CalculatorTestsRunner : ITestClassRunner
     {
         var instance = new CalculatorTests();
         var results = new List<TestResult>();
-        
+
         // Generated method calls (no reflection)
         results.Add(await RunTest_Add_TwoNumbers_ReturnsSum(instance, context));
         // ... other test method calls
-        
+
         return results.ToArray();
     }
 
@@ -131,7 +131,7 @@ sequenceDiagram
     participant TC as Test Class
     participant TM as Test Method
     participant A as Assertions
-    
+
     TR->>TC: Create Instance
     TR->>TC: Setup (if applicable)
     TR->>TM: Execute Test Method
@@ -144,10 +144,30 @@ sequenceDiagram
 
 ## Attribute System
 
-### Core Attributes
+For seamless migration from XUnit, UXUnit provides compatible attributes:
 
-- `[TestClass]`: Marks a class as containing tests
-- `[Test]`: Marks a method as a test case
+- `[Fact]`: Maps to `[Test]` - marks individual test methods
+- `[Theory]`: Maps to `[Test]` - marks parameterized test methods
+- `[InlineData(...)]`: Maps to `[TestData(...)]` - provides test parameters
+
+These allow existing XUnit tests to run with minimal changes:
+
+```csharp
+// XUnit syntax that works with UXUnit
+[Fact]
+public void SimpleTest()
+{
+    Assert.Equal(42, Calculate());
+}
+
+[Theory]
+[InlineData(1, 2, 3)]
+[InlineData(5, 10, 15)]
+public void AdditionTest(int a, int b, int expected)
+{
+    Assert.Equal(expected, a + b);
+}
+```
 - `[TestData(...)]`: Provides parameterized test data
 - `[Setup]`: Method to run before each test
 - `[Cleanup]`: Method to run after each test
@@ -256,8 +276,8 @@ public interface ITestResultProcessor
 
 ## Migration Strategy
 
-### From xUnit
-- Automated conversion tools for common patterns
+### From XUnit
+- XUnit compatibility attributes (`[Fact]`, `[Theory]`, `[InlineData]`) work directly
 - Side-by-side execution during migration
 - Clear migration documentation and examples
 

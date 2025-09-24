@@ -1,0 +1,13 @@
+     Passed: 12
+  Passed UXUnit.Compatibility.Tests.AsyncTestsCompatibility.AsyncTest_ShouldComplete [X ms]
+  Passed UXUnit.Compatibility.Tests.AsyncTestsCompatibility.AsyncTest_ShouldThrowException [X ms]
+  Passed UXUnit.Compatibility.Tests.AsyncTestsCompatibility.ParameterizedAsyncTest_WithDelay(delayMs: 100) [X ms]
+  Passed UXUnit.Compatibility.Tests.AsyncTestsCompatibility.ParameterizedAsyncTest_WithDelay(delayMs: 200) [X ms]
+  Passed UXUnit.Compatibility.Tests.AsyncTestsCompatibility.ParameterizedAsyncTest_WithDelay(delayMs: 50) [X ms]
+  Passed UXUnit.Compatibility.Tests.BasicTestsCompatibility.CollectionTest_ShouldValidateContents [X ms]
+  Passed UXUnit.Compatibility.Tests.BasicTestsCompatibility.ExceptionTest_ShouldThrowArgumentException [X ms]
+  Passed UXUnit.Compatibility.Tests.BasicTestsCompatibility.ParameterizedTest_Addition(a: -1, b: -2, expected: -3) [X ms]
+  Passed UXUnit.Compatibility.Tests.BasicTestsCompatibility.ParameterizedTest_Addition(a: 1, b: 2, expected: 3) [X ms]
+  Passed UXUnit.Compatibility.Tests.BasicTestsCompatibility.ParameterizedTest_Addition(a: 5, b: 10, expected: 15) [X ms]
+  Passed UXUnit.Compatibility.Tests.BasicTestsCompatibility.SimpleTest_ShouldPass [X ms]
+  Passed UXUnit.Compatibility.Tests.BasicTestsCompatibility.StringTest_ShouldValidateEquality [X ms]
