@@ -446,14 +446,14 @@ public sealed class TestRunConfiguration
 }
 
 // Helper implementations for null objects
-internal sealed class NullTestOutput : ITestOutput
+public sealed class NullTestOutput : ITestOutput
 {
     public static readonly NullTestOutput Instance = new();
     public void WriteLine(string message) { }
     public void WriteLine(string format, params object[] args) { }
 }
 
-internal sealed class EmptyServiceProvider : IServiceProvider
+public sealed class EmptyServiceProvider : IServiceProvider
 {
     public static readonly EmptyServiceProvider Instance = new();
     public object? GetService(Type serviceType) => null;
