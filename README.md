@@ -44,8 +44,7 @@ UXUnit leverages C# source generators to create a high-performance testing frame
 ## Quick Example
 
 ```csharp
-using UXUnit;
-using Xunit; // Use XUnit assertions
+using Xunit;
 
 public class CalculatorTests
 {
@@ -54,7 +53,7 @@ public class CalculatorTests
     {
         var calculator = new Calculator();
         var result = calculator.Add(2, 3);
-        Assert.Equal(5, result); // XUnit assertion
+        Assert.Equal(5, result);
     }
 
     [Theory]
@@ -65,7 +64,7 @@ public class CalculatorTests
     {
         var calculator = new Calculator();
         var result = calculator.Add(a, b);
-        Assert.Equal(expected, result); // XUnit assertion
+        Assert.Equal(expected, result);
     }
 }
 ```

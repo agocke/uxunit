@@ -1,4 +1,4 @@
-# Getting Started with UXUnit
+# Getting Started
 
 ## Installation
 
@@ -15,12 +15,11 @@ Add the following package references to your test project:
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="UXUnit.Core" Version="1.0.0" />
-    <PackageReference Include="UXUnit.Generators" Version="1.0.0">
+    <PackageReference Include="xunit" Version="2.4.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="UXUnit.Assertions" Version="1.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
   </ItemGroup>
 
@@ -36,8 +35,7 @@ Add the following package references to your test project:
 Add common usings to a `GlobalUsings.cs` file:
 
 ```csharp
-global using UXUnit;
-global using UXUnit.Assertions;
+global using Xunit;
 global using static UXUnit.Assert;
 ```
 
@@ -87,26 +85,17 @@ public class CalculatorTests
 
 ## Setup and Cleanup
 
-Use lifecycle methods for test initialization and cleanup:
+Use standard xUnit patterns for test initialization and cleanup:
 
 ```csharp
-[TestClass]
-public class DatabaseTests
+public class DatabaseTests : IDisposable
 {
-    private DatabaseContext _context;
-    private static string _connectionString;
+    private readonly DatabaseContext _context;
 
-    [ClassSetup]
-    public static void InitializeTestSuite()
+    public DatabaseTests()
     {
-        _connectionString = "Server=localhost;Database=TestDb;";
-        // Initialize test database
-    }
-
-    [Setup]
-    public void SetupTest()
-    {
-        _context = new DatabaseContext(_connectionString);
+        var connectionString = "Server=localhost;Database=TestDb;";
+        _context = new DatabaseContext(connectionString);
         _context.Database.BeginTransaction();
     }
 
@@ -120,17 +109,10 @@ public class DatabaseTests
         Assert.True(user.Id > 0);
     }
 
-    [Cleanup]
-    public void CleanupTest()
+    public void Dispose()
     {
         _context?.Database.RollbackTransaction();
         _context?.Dispose();
-    }
-
-    [ClassCleanup]
-    public static void CleanupTestSuite()
-    {
-        // Clean up test database
     }
 }
 ```
@@ -186,205 +168,7 @@ public class AssertionExamples
 }
 ```
 
-## Test Data from External Sources
 
-### CSV Data
-
-```csharp
-public class CsvDataTests
-{
-    [Theory]
-    [CsvData("testdata/calculations.csv")]
-    public void Calculate_FromCsv_ReturnsExpected(int a, int b, string operation, double expected)
-    {
-        var calculator = new Calculator();
-        double result = operation switch
-        {
-            "add" => calculator.Add(a, b),
-            "subtract" => calculator.Subtract(a, b),
-            "multiply" => calculator.Multiply(a, b),
-            "divide" => calculator.Divide(a, b),
-            _ => throw new ArgumentException($"Unknown operation: {operation}")
-        };
-        
-        Assert.Equal(expected, result, precision: 3);
-    }
-}
-```
-
-CSV file (`testdata/calculations.csv`):
-```csv
-a,b,operation,expected
-2,3,add,5
-5,2,subtract,3
-4,3,multiply,12
-10,2,divide,5
-```
-
-### Method Data Source
-
-```csharp
-public class DataSourceTests
-{
-    [Theory]
-    [TestDataSource(nameof(GetUserTestData))]
-    public void ValidateUser_WithVariousInputs_ReturnsExpectedResult(
-        string name, string email, bool expectedValid, string expectedError)
-    {
-        var validator = new UserValidator();
-        var result = validator.Validate(name, email);
-        
-        Assert.Equal(expectedValid, result.IsValid);
-        if (!expectedValid)
-        {
-            Assert.Contains(expectedError, result.ErrorMessage);
-        }
-    }
-
-    public static IEnumerable<object[]> GetUserTestData()
-    {
-        yield return new object[] { "John Doe", "john@example.com", true, "" };
-        yield return new object[] { "", "john@example.com", false, "Name is required" };
-        yield return new object[] { "John Doe", "invalid-email", false, "Invalid email" };
-        yield return new object[] { "John Doe", "", false, "Email is required" };
-    }
-}
-```
-
-## Custom Attributes and Extensions
-
-### Custom Assertion
-
-```csharp
-public static class CustomAssertions
-{
-    public static AssertionBuilder<string> IsValidEmail(this AssertionBuilder<string> builder)
-    {
-        var emailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-        return builder.Satisfies(
-            email => emailRegex.IsMatch(email ?? ""),
-            "Expected a valid email address");
-    }
-
-    public static AssertionBuilder<T> Satisfies<T>(
-        this AssertionBuilder<T> builder,
-        Func<T, bool> predicate, 
-        string message)
-    {
-        // Custom assertion implementation
-        if (!predicate(builder.ActualValue))
-        {
-            throw new AssertionException(message);
-        }
-        return builder;
-    }
-}
-
-// Usage
-[Fact]
-public void ValidateEmailFormat()
-{
-    var email = "user@example.com";
-    Assert.True(email.IsValidEmail());
-}
-```
-
-### Custom Test Attribute
-
-```csharp
-[AttributeUsage(AttributeTargets.Method)]
-public class DatabaseTestAttribute : Attribute, ITestMethodAttribute
-{
-    public void OnBeforeTest(ITestContext context)
-    {
-        // Start database transaction
-        var connection = GetDatabaseConnection();
-        connection.BeginTransaction();
-        context.AddProperty("DatabaseTransaction", connection);
-    }
-
-    public void OnAfterTest(ITestContext context, TestResult result)
-    {
-        // Rollback database transaction
-        if (context.GetProperty<IDbConnection>("DatabaseTransaction") is { } connection)
-        {
-            connection.Rollback();
-            connection.Dispose();
-        }
-    }
-
-    private static IDbConnection GetDatabaseConnection()
-    {
-        // Return database connection
-        return new SqlConnection("connection-string");
-    }
-}
-
-// Usage
-[TestClass]
-public class IntegrationTests
-{
-    [Fact]
-    [DatabaseTest]
-    public void TestDatabaseOperation()
-    {
-        // Test will run within a transaction that gets rolled back
-    }
-}
-```
-
-## Parallel Execution
-
-Control parallel execution at class and method levels:
-
-```csharp
-// Run tests in this class sequentially
-[TestClass]
-[Parallel(Execution = ParallelExecution.Disabled)]
-public class SequentialTests
-{
-    [Fact]
-    public void TestOne() { }
-    
-    [Fact] 
-    public void TestTwo() { }
-}
-
-// Group tests that access shared resources
-[TestClass]
-public class ResourceTests
-{
-    [Fact]
-    [Parallel(Group = "FileSystem")]
-    public void TestFileOperation1() { }
-    
-    [Fact]
-    [Parallel(Group = "FileSystem")]
-    public void TestFileOperation2() { }
-    
-    [Fact] // Can run in parallel with other ungrouped tests
-    public void TestIndependentOperation() { }
-}
-```
-
-## Configuration
-
-Configure test execution behavior:
-
-```csharp
-// In AssemblyInfo.cs or any source file
-[assembly: UXUnitConfiguration(
-    ParallelExecution = true,
-    MaxDegreeOfParallelism = 4,
-    DefaultTimeout = 30000,
-    StopOnFirstFailure = false
-)]
-
-[assembly: TestAssembly(
-    DisplayName = "My Integration Tests",
-    Category = "Integration"
-)]
-```
 
 ## Running Tests
 
@@ -404,13 +188,12 @@ dotnet test --configuration Release --logger trx
 
 ### IDE Integration
 
-UXUnit integrates with Visual Studio Test Explorer and other .NET test runners through the standard test adapter interface.
+Tests integrate with Visual Studio Test Explorer and other .NET test runners through the standard test adapter interface.
 
 ## Best Practices
 
 ### 1. Organize Tests by Feature
 ```csharp
-[TestClass]
 public class UserRegistrationTests
 {
     // Group related tests together
@@ -443,19 +226,28 @@ public void CalculateDiscount_ForPremiumCustomer_AppliesCorrectRate()
 }
 ```
 
-### 4. Use Setup Methods Wisely
+### 4. Use Constructor/Dispose Pattern for Setup
 ```csharp
-[TestClass]
-public class ServiceTests
+public class ServiceTests : IDisposable
 {
-    private IService _service;
-    private Mock<IDependency> _mockDependency;
+    private readonly IService _service;
+    private readonly Mock<IDependency> _mockDependency;
 
-    [Setup]
-    public void Setup()
+    public ServiceTests()
     {
         _mockDependency = new Mock<IDependency>();
         _service = new Service(_mockDependency.Object);
+    }
+
+    [Fact]
+    public void SomeTest()
+    {
+        // Test implementation
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
     }
 }
 ```
@@ -475,23 +267,14 @@ public async Task ProcessAsync_WithValidInput_CompletesSuccessfully()
 
 ## Migration from xUnit
 
-### Attribute Mapping
+## Migration from xUnit
 
-Replace xUnit attributes with UXUnit equivalents:
+### No Migration Required
+
+Your existing xUnit tests work directly without any changes:
 
 ```csharp
-// Before (xUnit)
-public class TestClass
-{
-    [Fact]
-    public void Test1() { }
-    
-    [Theory]
-    [InlineData(1, 2, 3)]
-    public void Test2(int a, int b, int expected) { }
-}
-
-// After (UXUnit)
+// xUnit tests work as-is
 public class TestClass
 {
     [Fact]
@@ -503,18 +286,14 @@ public class TestClass
 }
 ```
 
-### Assertion Updates
+### Assertions
+
+Use standard xUnit assertions:
 
 ```csharp
-// Before (xUnit)
-Assert.Equal(expected, actual);
-Assert.True(condition);
-Assert.Throws<Exception>(() => method());
-
-// After (UXUnit using xUnit assertions)  
 Assert.Equal(expected, actual);
 Assert.True(condition);
 Assert.Throws<Exception>(() => method());
 ```
 
-This should get you up and running with UXUnit! Check out the other documentation files for more detailed information about the framework's architecture and advanced features.
+This should get you up and running! Your existing xUnit tests will work without any modifications.
