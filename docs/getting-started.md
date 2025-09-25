@@ -497,7 +497,6 @@ public class TestClass
 }
 
 // After (UXUnit)
-[TestClass]
 public class TestClass
 {
     [Fact]
