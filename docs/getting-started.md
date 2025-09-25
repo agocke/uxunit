@@ -15,11 +15,12 @@ Add the following package references to your test project:
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="xunit" Version="2.4.2" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3">
+    <PackageReference Include="UXUnit.Core" Version="1.0.0" />
+    <PackageReference Include="UXUnit.Generators" Version="1.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="UXUnit.Assertions" Version="1.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
   </ItemGroup>
 
@@ -35,7 +36,10 @@ Add the following package references to your test project:
 Add common usings to a `GlobalUsings.cs` file:
 
 ```csharp
-global using Xunit;
+global using UXUnit;
+global using UXUnit.Assertions;
+global using static UXUnit.Assert;
+```
 global using static UXUnit.Assert;
 ```
 
