@@ -50,7 +50,7 @@ using Xunit; // Use XUnit assertions
 [TestClass]
 public class CalculatorTests
 {
-    [Test]
+    [Fact]
     public void Add_TwoNumbers_ReturnsSum()
     {
         var calculator = new Calculator();
@@ -58,10 +58,10 @@ public class CalculatorTests
         Assert.Equal(5, result); // XUnit assertion
     }
 
-    [Test]
-    [TestData(1, 2, 3)]
-    [TestData(5, 7, 12)]
-    [TestData(-1, 1, 0)]
+    [Theory]
+    [InlineData(1, 2, 3)]
+    [InlineData(5, 7, 12)]
+    [InlineData(-1, 1, 0)]
     public void Add_VariousInputs_ReturnsExpectedSum(int a, int b, int expected)
     {
         var calculator = new Calculator();

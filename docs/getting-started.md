@@ -49,40 +49,40 @@ Create a simple test class:
 [TestClass]
 public class BasicTests
 {
-    [Test]
+    [Fact]
     public void SimpleMathTest()
     {
         var result = 2 + 2;
-        Assert.That(result).IsEqualTo(4);
+        Assert.Equal(4, result);
     }
 
-    [Test]
+    [Fact]
     public async Task AsyncTest()
     {
         await Task.Delay(10);
-        Assert.That(true).IsTrue();
+        Assert.True(true);
     }
 }
 ```
 
 ## Parameterized Tests
 
-Use `[TestData]` attributes for parameterized tests:
+Use `[Theory]` and `[InlineData]` attributes for parameterized tests:
 
 ```csharp
 [TestClass]
 public class CalculatorTests
 {
-    [Test]
-    [TestData(1, 2, 3)]
-    [TestData(5, 7, 12)]
-    [TestData(-1, 1, 0)]
-    [TestData(0, 0, 0)]
+    [Theory]
+    [InlineData(1, 2, 3)]
+    [InlineData(5, 7, 12)]
+    [InlineData(-1, 1, 0)]
+    [InlineData(0, 0, 0)]
     public void Add_ReturnsExpectedResult(int a, int b, int expected)
     {
         var calculator = new Calculator();
         var result = calculator.Add(a, b);
-        Assert.That(result).IsEqualTo(expected);
+        Assert.Equal(expected, result);
     }
 }
 ```
@@ -112,14 +112,14 @@ public class DatabaseTests
         _context.Database.BeginTransaction();
     }
 
-    [Test]
+    [Fact]
     public void CanInsertUser()
     {
         var user = new User("John Doe", "john@example.com");
         _context.Users.Add(user);
         _context.SaveChanges();
 
-        Assert.That(user.Id).IsGreaterThan(0);
+        Assert.True(user.Id > 0);
     }
 
     [Cleanup]
@@ -145,43 +145,40 @@ UXUnit provides a fluent assertion API:
 [TestClass]
 public class AssertionExamples
 {
-    [Test]
+    [Fact]
     public void StringAssertions()
     {
         var text = "Hello, World!";
         
-        Assert.That(text)
-            .IsNotNull()
-            .Contains("World")
-            .StartsWith("Hello")
-            .HasLength(13);
+        Assert.NotNull(text);
+        Assert.Contains("World", text);
+        Assert.StartsWith("Hello", text);
+        Assert.Equal(13, text.Length);
     }
 
-    [Test]
+    [Fact]
     public void CollectionAssertions()
     {
         var numbers = new[] { 1, 2, 3, 4, 5 };
         
-        Assert.That(numbers)
-            .IsNotEmpty()
-            .HasCount(5)
-            .Contains(3)
-            .IsOrdered();
+        Assert.NotEmpty(numbers);
+        Assert.Equal(5, numbers.Length);
+        Assert.Contains(3, numbers);
+        Assert.Equal(numbers.OrderBy(x => x), numbers);
     }
 
-    [Test]
+    [Fact]
     public void NumericAssertions()
     {
         var value = 42.0;
         
-        Assert.That(value)
-            .IsGreaterThan(40)
-            .IsLessThan(50)
-            .IsBetween(40, 50)
-            .IsCloseTo(42.1, tolerance: 0.2);
+        Assert.True(value > 40);
+        Assert.True(value < 50);
+        Assert.InRange(value, 40, 50);
+        Assert.Equal(42.1, value, precision: 1);
     }
 
-    [Test]
+    [Fact]
     public void ExceptionAssertions()
     {
         var calculator = new Calculator();
@@ -200,7 +197,7 @@ public class AssertionExamples
 [TestClass]
 public class CsvDataTests
 {
-    [Test]
+    [Theory]
     [CsvData("testdata/calculations.csv")]
     public void Calculate_FromCsv_ReturnsExpected(int a, int b, string operation, double expected)
     {
@@ -214,7 +211,7 @@ public class CsvDataTests
             _ => throw new ArgumentException($"Unknown operation: {operation}")
         };
         
-        Assert.That(result).IsCloseTo(expected, 0.001);
+        Assert.Equal(expected, result, precision: 3);
     }
 }
 ```
@@ -234,7 +231,7 @@ a,b,operation,expected
 [TestClass]
 public class DataSourceTests
 {
-    [Test]
+    [Theory]
     [TestDataSource(nameof(GetUserTestData))]
     public void ValidateUser_WithVariousInputs_ReturnsExpectedResult(
         string name, string email, bool expectedValid, string expectedError)
@@ -242,10 +239,10 @@ public class DataSourceTests
         var validator = new UserValidator();
         var result = validator.Validate(name, email);
         
-        Assert.That(result.IsValid).IsEqualTo(expectedValid);
+        Assert.Equal(expectedValid, result.IsValid);
         if (!expectedValid)
         {
-            Assert.That(result.ErrorMessage).Contains(expectedError);
+            Assert.Contains(expectedError, result.ErrorMessage);
         }
     }
 
@@ -289,11 +286,11 @@ public static class CustomAssertions
 }
 
 // Usage
-[Test]
+[Fact]
 public void ValidateEmailFormat()
 {
     var email = "user@example.com";
-    Assert.That(email).IsValidEmail();
+    Assert.True(email.IsValidEmail());
 }
 ```
 
@@ -332,7 +329,7 @@ public class DatabaseTestAttribute : Attribute, ITestMethodAttribute
 [TestClass]
 public class IntegrationTests
 {
-    [Test]
+    [Fact]
     [DatabaseTest]
     public void TestDatabaseOperation()
     {
@@ -351,10 +348,10 @@ Control parallel execution at class and method levels:
 [Parallel(Execution = ParallelExecution.Disabled)]
 public class SequentialTests
 {
-    [Test]
+    [Fact]
     public void TestOne() { }
     
-    [Test] 
+    [Fact] 
     public void TestTwo() { }
 }
 
@@ -362,15 +359,15 @@ public class SequentialTests
 [TestClass]
 public class ResourceTests
 {
-    [Test]
+    [Fact]
     [Parallel(Group = "FileSystem")]
     public void TestFileOperation1() { }
     
-    [Test]
+    [Fact]
     [Parallel(Group = "FileSystem")]
     public void TestFileOperation2() { }
     
-    [Test] // Can run in parallel with other ungrouped tests
+    [Fact] // Can run in parallel with other ungrouped tests
     public void TestIndependentOperation() { }
 }
 ```
@@ -427,7 +424,7 @@ public class UserRegistrationTests
 
 ### 2. Use Descriptive Test Names
 ```csharp
-[Test]
+[Fact]
 public void RegisterUser_WithValidData_CreatesUserSuccessfully()
 {
     // Clear, descriptive test name
@@ -436,7 +433,7 @@ public void RegisterUser_WithValidData_CreatesUserSuccessfully()
 
 ### 3. Follow AAA Pattern
 ```csharp
-[Test]
+[Fact]
 public void CalculateDiscount_ForPremiumCustomer_AppliesCorrectRate()
 {
     // Arrange
@@ -447,7 +444,7 @@ public void CalculateDiscount_ForPremiumCustomer_AppliesCorrectRate()
     var discount = calculator.Calculate(customer, 100);
     
     // Assert
-    Assert.That(discount).IsEqualTo(10);
+    Assert.Equal(10, discount);
 }
 ```
 
@@ -470,14 +467,14 @@ public class ServiceTests
 
 ### 5. Handle Async Tests Properly
 ```csharp
-[Test]
+[Fact]
 public async Task ProcessAsync_WithValidInput_CompletesSuccessfully()
 {
     var processor = new AsyncProcessor();
     
     await processor.ProcessAsync("valid-input");
     
-    Assert.That(processor.IsCompleted).IsTrue();
+    Assert.True(processor.IsCompleted);
 }
 ```
 
@@ -503,11 +500,11 @@ public class TestClass
 [TestClass]
 public class TestClass
 {
-    [Test]
+    [Fact]
     public void Test1() { }
     
-    [Test]
-    [TestData(1, 2, 3)]
+    [Theory]
+    [InlineData(1, 2, 3)]
     public void Test2(int a, int b, int expected) { }
 }
 ```
@@ -520,9 +517,9 @@ Assert.Equal(expected, actual);
 Assert.True(condition);
 Assert.Throws<Exception>(() => method());
 
-// After (UXUnit)  
-Assert.That(actual).IsEqualTo(expected);
-Assert.That(condition).IsTrue();
+// After (UXUnit using xUnit assertions)  
+Assert.Equal(expected, actual);
+Assert.True(condition);
 Assert.Throws<Exception>(() => method());
 ```
 
