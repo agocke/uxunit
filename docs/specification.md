@@ -36,11 +36,11 @@ public class CalculatorTests
         _calculator = new Calculator();
     }
 
-    [Test]
+    [Fact]
     public void Add_TwoNumbers_ReturnsSum()
     {
         var result = _calculator.Add(2, 3);
-        Assert.That(result).IsEqualTo(5);
+        Assert.Equal(5, result);
     }
 
     [Cleanup]
@@ -70,11 +70,11 @@ A test method is a method marked with the `[Test]` attribute within a test class
 
 #### Supported Method Signatures
 ```csharp
-[Test] public void SimpleTest() { }
-[Test] public async Task AsyncTest() { }
-[Test] public async ValueTask ValueTaskTest() { }
-[Test] public void ParameterizedTest(int value) { }
-[Test] public static void StaticTest() { }
+[Fact] public void SimpleTest() { }
+[Fact] public async Task AsyncTest() { }
+[Fact] public async ValueTask ValueTaskTest() { }
+[Theory] public void ParameterizedTest(int value) { }
+[Fact] public static void StaticTest() { }
 ```
 
 ## Attributes
@@ -146,14 +146,14 @@ public class TestDataAttribute : Attribute
 
 **Example:**
 ```csharp
-[Test]
-[TestData(1, 2, 3)]
-[TestData(5, 7, 12)]
-[TestData(-1, 1, 0, DisplayName = "Adding negative and positive")]
+[Theory]
+[InlineData(1, 2, 3)]
+[InlineData(5, 7, 12)]
+[InlineData(-1, 1, 0, DisplayName = "Adding negative and positive")]
 public void Add_VariousInputs_ReturnsExpectedSum(int a, int b, int expected)
 {
     var result = _calculator.Add(a, b);
-    Assert.That(result).IsEqualTo(expected);
+    Assert.Equal(expected, result);
 }
 ```
 
@@ -332,12 +332,12 @@ public class TestDataSourceAttribute : Attribute
 
 **Example:**
 ```csharp
-[Test]
+[Theory]
 [TestDataSource(nameof(GetCalculationData))]
 public void Add_DataFromMethod_ReturnsExpectedResult(int a, int b, int expected)
 {
     var result = _calculator.Add(a, b);
-    Assert.That(result).IsEqualTo(expected);
+    Assert.Equal(expected, result);
 }
 
 public static IEnumerable<object[]> GetCalculationData()
@@ -410,15 +410,15 @@ public class SerialTests { }
 [TestClass]
 public class GroupedTests
 {
-    [Test]
+    [Fact]
     [Parallel(Group = "Database")]
     public void DatabaseTest1() { }
 
-    [Test]
+    [Fact]
     [Parallel(Group = "Database")]
     public void DatabaseTest2() { }
 
-    [Test] // Can run in parallel with any other test
+    [Fact] // Can run in parallel with any other test
     public void IndependentTest() { }
 }
 ```
@@ -427,7 +427,7 @@ public class GroupedTests
 
 #### Expected Exceptions
 ```csharp
-[Test]
+[Fact]
 [ExpectedException(typeof(ArgumentNullException))]
 public void Method_NullInput_ThrowsArgumentNull()
 {
@@ -435,7 +435,7 @@ public void Method_NullInput_ThrowsArgumentNull()
 }
 
 // Alternative fluent syntax
-[Test]
+[Fact]
 public void Method_NullInput_ThrowsArgumentNull()
 {
     Assert.Throws<ArgumentNullException>(() => method.DoSomething(null));
@@ -450,7 +450,7 @@ public void Method_NullInput_ThrowsArgumentNull()
 ### Timeouts
 
 ```csharp
-[Test(Timeout = 5000)] // 5 seconds
+[Fact(Timeout = 5000)] // 5 seconds
 public async Task LongRunningTest()
 {
     await SomeAsyncOperation();
@@ -496,7 +496,7 @@ public interface ITestContext
 
 **Usage in tests:**
 ```csharp
-[Test]
+[Fact]
 public void TestWithOutput(ITestContext context)
 {
     context.WriteLine("Starting test execution");
@@ -577,8 +577,8 @@ public class DatabaseTestAttribute : Attribute, ITestMethodAttribute
 
 | xUnit | UXUnit |
 |-------|---------|
-| `[Fact]` | `[Test]` |
-| `[Theory]` + `[InlineData]` | `[Test]` + `[TestData]` |
+| `[Fact]` | `[Fact]` |
+| `[Theory]` + `[InlineData]` | `[Theory]` + `[InlineData]` |
 | `[ClassData]` | `[TestDataSource]` |
 | `IClassFixture<T>` | Constructor injection |
 | `ICollectionFixture<T>` | `[ClassSetup]`/`[ClassCleanup]` |
@@ -613,20 +613,20 @@ public class CalculatorTests
 [TestClass]
 public class CalculatorTests
 {
-    [Test]
+    [Fact]
     public void Add_TwoNumbers_ReturnsSum()
     {
         var result = new Calculator().Add(2, 3);
-        Assert.That(result).IsEqualTo(5);
+        Assert.Equal(5, result);
     }
 
-    [Test]
-    [TestData(1, 2, 3)]
-    [TestData(5, 7, 12)]
+    [Theory]
+    [InlineData(1, 2, 3)]
+    [InlineData(5, 7, 12)]
     public void Add_VariousInputs_ReturnsExpectedSum(int a, int b, int expected)
     {
         var result = new Calculator().Add(a, b);
-        Assert.That(result).IsEqualTo(expected);
+        Assert.Equal(expected, result);
     }
 }
 ```
