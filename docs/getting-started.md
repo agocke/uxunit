@@ -46,7 +46,6 @@ global using static UXUnit.Assert;
 Create a simple test class:
 
 ```csharp
-[TestClass]
 public class BasicTests
 {
     [Fact]
@@ -70,7 +69,6 @@ public class BasicTests
 Use `[Theory]` and `[InlineData]` attributes for parameterized tests:
 
 ```csharp
-[TestClass]
 public class CalculatorTests
 {
     [Theory]
@@ -142,7 +140,6 @@ public class DatabaseTests
 UXUnit provides a fluent assertion API:
 
 ```csharp
-[TestClass]
 public class AssertionExamples
 {
     [Fact]
@@ -194,7 +191,6 @@ public class AssertionExamples
 ### CSV Data
 
 ```csharp
-[TestClass]
 public class CsvDataTests
 {
     [Theory]
@@ -228,7 +224,6 @@ a,b,operation,expected
 ### Method Data Source
 
 ```csharp
-[TestClass]
 public class DataSourceTests
 {
     [Theory]

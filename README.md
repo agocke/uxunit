@@ -47,7 +47,6 @@ UXUnit leverages C# source generators to create a high-performance testing frame
 using UXUnit;
 using Xunit; // Use XUnit assertions
 
-[TestClass]
 public class CalculatorTests
 {
     [Fact]
