@@ -1,4 +1,4 @@
-# UXUnit Design Document
+# UXUnit Design Overview
 
 ## Vision
 
@@ -11,291 +11,185 @@ UXUnit is a next-generation unit testing framework for .NET that leverages sourc
 - **Developer Experience**: Provide rich tooling support, clear error messages, and intuitive APIs
 - **Reliability**: Catch test configuration errors at compile time rather than runtime
 - **Simplicity**: Minimize boilerplate code and configuration complexity
-- **Extensibility**: Support custom attributes, assertions, and test behaviors
+- **Clean Architecture**: No unnecessary abstraction layers
 
 ### Non-Goals
-- Backward compatibility with existing xUnit syntax (clean slate approach)
+- Backward compatibility with existing xUnit syntax (though migration path provided)
 - Support for dynamic test discovery at runtime
-- Integration with legacy test runners (focus on modern tooling)
+- Extensible test runner framework (we ARE the framework)
 
 ## Architecture Overview
 
-### High-Level Components
+### High-Level Flow
 
 ```mermaid
 graph TB
-    A[Test Source Code] --> B[UXUnit Source Generators]
-    B --> C[Generated Test Runner]
-    C --> D[UXUnit Runtime]
-    D --> E[Test Results]
+    A[Test Source Code] --> B[UXUnit.Generators]
+    B --> C[Generated Test Executors]
+    B --> D[Test Metadata]
+    C --> E[UXUnit.Runtime]
+    D --> E
+    E --> F[TestResult Array]
+    F --> G[Reporters/Formatters]
 
-    F[UXUnit.Core] --> B
-    G[UXUnit.Assertions] --> A
-    H[UXUnit.Attributes] --> A
+    H[UXUnit.Core] -.defines models.-> B
+    H -.defines models.-> E
+
+    style B fill:#FFE5B4
+    style E fill:#B4E5FF
+    style H fill:#E5FFB4
 ```
 
-### Component Responsibilities
+### Component Packages
 
-#### UXUnit.Core
-- Defines core interfaces and base types
-- Provides attribute definitions for test marking
-- Contains shared utilities and helpers
+#### [UXUnit.Core](./design-core.md)
+**Purpose**: Pure data models and contracts
+**No runtime logic** - only data structures
 
-#### UXUnit.Generators
-- Analyzes source code for test classes and methods
-- Generates test runner code at compile time
-- Validates test method signatures and attributes
-- Creates optimized test execution paths
+- Data models (TestResult, TestClassMetadata, etc.)
+- Attributes ([Test], [Fact], [Theory], etc.)
+- Interfaces (ITestContext, ITestOutput, etc.)
 
-#### UXUnit.Runtime
-- Executes generated test runners
-- Manages test lifecycle and state
-- Handles parallel execution and synchronization
-- Collects and reports test results
+See [Core Design Document](./design-core.md) for details.
+
+#### [UXUnit.Generators](./design-generator.md)
+**Purpose**: Compile-time code generation
+**Roslyn source generator**
+
+- Discovers test classes and methods
+- Validates test structure at compile time
+- Generates optimized test execution code
+- Generates metadata for test discovery
+
+See [Generator Design Document](./design-generator.md) for details.
+
+#### [UXUnit.Runtime](./design-runtime.md)
+**Purpose**: Test execution engine
+**Pure function: metadata → results**
+
+- Executes generated test delegates
+- Coordinates parallel/sequential execution
+- Returns structured test results
+- **No presentation logic**
+
+See [Runtime Design Document](./design-runtime.md) for details.
 
 #### UXUnit.Assertions
-- Provides fluent assertion API
-- Generates detailed failure messages
-- Supports custom assertion extensions
+**Purpose**: Assertion library
+**Fluent API for test assertions**
 
-## Source Generation Strategy
+- Equality, comparison, collection assertions
+- Exception assertions
+- Custom assertion extensibility
 
-### Test Discovery Process
+## Key Design Principles
 
-1. **Compilation Phase**: Source generators scan all source files
-2. **Analysis Phase**: Identify classes marked with `[TestClass]`
-3. **Validation Phase**: Validate test method signatures and attributes
-4. **Generation Phase**: Generate optimized test runner code
+### 1. No Unnecessary Abstractions
 
-### Generated Code Structure
+UXUnit is **the framework**, not a framework for building test runners:
 
-For each test class, the generator creates:
+- ❌ No `ITestRunner` interface - execution engine is a static function
+- ❌ No `ITestClassRunner` - generated code creates delegates directly
+- ❌ No `TestClassRunnerBase` - source generation eliminates need for inheritance
+- ✅ Simple data flow: `Metadata → Execute → Results`
+
+### 2. Separation of Concerns
+
+**Execution** is separate from **presentation**:
 
 ```csharp
-// Generated for CalculatorTests
-internal sealed class CalculatorTestsRunner : ITestClassRunner
-{
-    public TestClassMetadata Metadata { get; } = new TestClassMetadata
-    {
-        Name = "CalculatorTests",
-        TestMethods = new[]
-        {
-            new TestMethodMetadata("Add_TwoNumbers_ReturnsSum", ...),
-            // ... other methods
-        }
-    };
+// Execution: Pure function
+TestResult[] results = await TestExecutionEngine.ExecuteTestsAsync(metadata);
 
-    public async Task<TestResult[]> RunAllTestsAsync(TestContext context)
+// Presentation: Separate layer
+ITestResultReporter reporter = new ConsoleReporter();
+reporter.Report(results);
+```
+
+### 3. Zero Reflection
+
+All test invocations happen through generated code:
+
+```csharp
+// Generated - direct method call, no reflection!
+instance.MyTestMethod();
+
+// NOT this:
+// method.Invoke(instance, null);  ❌
+```
+
+## End-to-End Flow
+
+### Example: Simple Test
+
+**User writes**:
+```csharp
+[TestClass]
+public class CalculatorTests
+{
+    [Fact]
+    public void Add_ReturnsSum()
+    {
+        var calc = new Calculator();
+        Assert.Equal(5, calc.Add(2, 3));
+    }
+}
+```
+
+**Generator creates** (compile time):
+```csharp
+internal static class CalculatorTests_Executor
+{
+    public static async Task<TestResult> Execute_Add_ReturnsSum(
+        CancellationToken ct)
     {
         var instance = new CalculatorTests();
-        var results = new List<TestResult>();
-
-        // Generated method calls (no reflection)
-        results.Add(await RunTest_Add_TwoNumbers_ReturnsSum(instance, context));
-        // ... other test method calls
-
-        return results.ToArray();
-    }
-
-    private async Task<TestResult> RunTest_Add_TwoNumbers_ReturnsSum(
-        CalculatorTests instance, TestContext context)
-    {
         try
         {
-            instance.Add_TwoNumbers_ReturnsSum(); // Direct method call
-            return TestResult.Success("Add_TwoNumbers_ReturnsSum");
+            instance.Add_ReturnsSum();  // Direct call!
+            return TestResult.Success(...);
         }
         catch (Exception ex)
         {
-            return TestResult.Failure("Add_TwoNumbers_ReturnsSum", ex);
+            return TestResult.Failure(..., ex);
         }
     }
 }
 ```
 
-## Test Lifecycle
-
-### Execution Flow
-
-1. **Discovery**: Compile-time generation creates test registry
-2. **Initialization**: Test runner loads generated test classes
-3. **Execution**: Direct method invocation (no reflection)
-4. **Cleanup**: Deterministic cleanup and resource disposal
-5. **Reporting**: Structured result collection and output
-
-### Test Method Lifecycle
-
-```mermaid
-sequenceDiagram
-    participant TR as Test Runner
-    participant TC as Test Class
-    participant TM as Test Method
-    participant A as Assertions
-
-    TR->>TC: Create Instance
-    TR->>TC: Setup (if applicable)
-    TR->>TM: Execute Test Method
-    TM->>A: Make Assertions
-    A-->>TM: Pass/Fail
-    TM-->>TR: Test Result
-    TR->>TC: Cleanup (if applicable)
-    TR->>TC: Dispose Instance
-```
-
-## Attribute System
-
-For seamless migration from XUnit, UXUnit provides compatible attributes:
-
-- `[Fact]`: Maps to `[Test]` - marks individual test methods
-- `[Theory]`: Maps to `[Test]` - marks parameterized test methods
-- `[InlineData(...)]`: Maps to `[TestData(...)]` - provides test parameters
-
-These allow existing XUnit tests to run with minimal changes:
-
+**Runtime executes** (runtime):
 ```csharp
-// XUnit syntax that works with UXUnit
-[Fact]
-public void SimpleTest()
-{
-    Assert.Equal(42, Calculate());
-}
-
-[Theory]
-[InlineData(1, 2, 3)]
-[InlineData(5, 10, 15)]
-public void AdditionTest(int a, int b, int expected)
-{
-    Assert.Equal(expected, a + b);
-}
-```
-- `[TestData(...)]`: Provides parameterized test data
-- `[Setup]`: Method to run before each test
-- `[Cleanup]`: Method to run after each test
-- `[ClassSetup]`: Method to run once before all tests in class
-- `[ClassCleanup]`: Method to run once after all tests in class
-
-### Custom Attributes
-
-Framework supports custom attributes through interfaces:
-
-```csharp
-public interface ITestMethodAttribute
-{
-    void OnBeforeTest(TestContext context);
-    void OnAfterTest(TestContext context, TestResult result);
-}
-
-public interface ITestClassAttribute
-{
-    void OnBeforeClass(TestContext context);
-    void OnAfterClass(TestContext context, TestResult[] results);
-}
+var results = await TestExecutionEngine.ExecuteTestsAsync(
+    new[] { CalculatorTests_Executor.Metadata },
+    options);
+// results[0].Status == TestStatus.Passed
 ```
 
 ## Performance Characteristics
 
-### Compile-Time Benefits
-- Early error detection for malformed tests
-- Optimized code generation based on actual test structure
-- Elimination of runtime type scanning and reflection
+- **Zero Reflection**: Direct method calls via source generation
+- **Minimal Allocations**: Efficient result collection
+- **Parallel Execution**: Built-in support with configurable parallelism
+- **Compile-Time Validation**: Catch errors before running tests
 
-### Runtime Benefits
-- Direct method invocation (no reflection overhead)
-- Optimized test execution paths
-- Minimal allocations during test execution
-- Built-in parallel execution support
+## XUnit Migration Path
 
-### Memory Efficiency
-- No runtime metadata caching
-- Deterministic object lifecycle management
-- Minimal framework overhead per test
+UXUnit provides compatibility attributes for easy migration:
 
-## Error Handling and Diagnostics
-
-### Compile-Time Diagnostics
-- Invalid test method signatures
-- Missing or incorrect attribute usage
-- Circular dependencies in test setup
-- Performance warnings for sub-optimal patterns
-
-### Runtime Error Handling
-- Structured exception capturing
-- Rich assertion failure messages
-- Test timeout handling
-- Resource leak detection
-
-## Extensibility Points
-
-### Custom Assertions
 ```csharp
-public static class CustomAssertions
-{
-    public static void IsValidEmail(this Assert assert, string email)
-    {
-        // Custom assertion implementation
-    }
-}
+// These work out of the box:
+[Fact]              // → maps to [Test]
+[Theory]            // → maps to [Test] with parameters
+[InlineData(...)]   // → provides test case data
 ```
 
-### Custom Test Data Sources
-```csharp
-[AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-public class DatabaseTestDataAttribute : Attribute, ITestDataSource
-{
-    public IEnumerable<object[]> GetTestData(MethodInfo method)
-    {
-        // Load test data from database
-    }
-}
-```
+See [specification.md](./specification.md) for complete attribute reference.
 
-### Test Result Processors
-```csharp
-public interface ITestResultProcessor
-{
-    Task ProcessResultAsync(TestResult result);
-}
-```
+## Documentation
 
-## Integration Points
-
-### Build Integration
-- MSBuild targets for test discovery
-- Integration with .NET CLI test commands
-- Support for CI/CD pipelines
-
-### IDE Integration
-- Test Explorer support through generated metadata
-- Debugger integration for test execution
-- IntelliSense support for generated code
-
-### Tooling Integration
-- Coverage analysis support
-- Performance profiling integration
-- Test result reporting formats (JUnit, TRX, etc.)
-
-## Migration Strategy
-
-### From XUnit
-- XUnit compatibility attributes (`[Fact]`, `[Theory]`, `[InlineData]`) work directly
-- Side-by-side execution during migration
-- Clear migration documentation and examples
-
-### Incremental Adoption
-- Assembly-level opt-in for gradual adoption
-- Compatibility layer for existing test infrastructure
-- Migration validation tools
-
-## Future Considerations
-
-### Planned Features
-- Snapshot testing support
-- Property-based testing integration
-- Advanced parallel execution strategies
-- Cloud-native test execution
-
-### Research Areas
-- Integration with formal verification tools
-- AI-assisted test generation
-- Advanced mutation testing support
-- Performance regression detection
+- **[design-core.md](./design-core.md)** - UXUnit.Core data models and contracts
+- **[design-generator.md](./design-generator.md)** - Source generator implementation
+- **[design-runtime.md](./design-runtime.md)** - Test execution engine
+- **[specification.md](./specification.md)** - Complete API specification
+- **[data-model.md](./data-model.md)** - Data model reference
+- **[getting-started.md](./getting-started.md)** - Quick start guide

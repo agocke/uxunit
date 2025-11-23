@@ -6,8 +6,7 @@ namespace UXUnit.Compatibility.Tests;
 /// Demonstrates compatibility between XUnit and UXUnit test frameworks.
 /// This class can be compiled and executed with either framework.
 /// </summary>
-public class BasicTestsCompatibility
-    : IDisposable
+public class BasicTestsCompatibility : IDisposable
 {
     [Fact]
     public void SimpleTest_ShouldPass()
