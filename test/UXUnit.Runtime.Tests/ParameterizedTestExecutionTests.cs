@@ -23,6 +23,7 @@ public class ParameterizedTestExecutionTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TheoryTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Theory
@@ -58,6 +59,7 @@ public class ParameterizedTestExecutionTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TheoryTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Theory
@@ -98,6 +100,7 @@ public class ParameterizedTestExecutionTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TheoryTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Theory
@@ -136,6 +139,7 @@ public class ParameterizedTestExecutionTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TheoryTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Theory
@@ -178,6 +182,7 @@ public class ParameterizedTestExecutionTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TheoryTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Theory
@@ -223,6 +228,7 @@ public class ParameterizedTestExecutionTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TheoryTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Theory
@@ -266,6 +272,7 @@ public class ParameterizedTestExecutionTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "SimpleTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Fact

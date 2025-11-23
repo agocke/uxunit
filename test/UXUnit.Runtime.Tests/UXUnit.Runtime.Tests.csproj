@@ -6,7 +6,6 @@
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
     <IsTestProject>true</IsTestProject>
-    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
 
     <NoWarn>$(NoWarn);xUnit1051</NoWarn>
   </PropertyGroup>

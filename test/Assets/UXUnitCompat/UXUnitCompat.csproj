@@ -33,6 +33,7 @@
     />
     <ProjectReference Include="../../../src/UXUnit.Runtime/UXUnit.Runtime.csproj" />
 
+    <PackageReference Include="StaticCS.IndentingBuilder" />
     <PackageReference Include="xunit.v3.assert" />
   </ItemGroup>
 </Project>
