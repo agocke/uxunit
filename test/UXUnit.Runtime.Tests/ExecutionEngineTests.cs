@@ -23,11 +23,11 @@ public class ExecutionEngineTests
             ClassName = "SimpleTestClass",
             TestMethods =
             [
-                new TestMethodMetadata
+                new TestMethodMetadata.Fact
                 {
                     MethodName = "SimplePassingTest",
                     Skip = false,
-                    ExecuteAsync = async (ct) =>
+                    Body = async (ct) =>
                     {
                         // This is the actual test code - just set a flag and succeed
                         executed = true;
@@ -63,7 +63,7 @@ public class ExecutionEngineTests
             ClassName = "SkippedTestClass",
             TestMethods =
             [
-                new TestMethodMetadata
+                new TestMethodMetadata.Fact
                 {
                     MethodName = "SkippedTest",
                     Skip = true,
@@ -95,9 +95,9 @@ public class ExecutionEngineTests
             ClassName = "MultiTestClass",
             TestMethods =
             [
-                new TestMethodMetadata { MethodName = "Test1", Skip = false },
-                new TestMethodMetadata { MethodName = "Test2", Skip = false },
-                new TestMethodMetadata { MethodName = "Test3", Skip = true, SkipReason = "Skip this one" }
+                new TestMethodMetadata.Fact { MethodName = "Test1", Skip = false },
+                new TestMethodMetadata.Fact { MethodName = "Test2", Skip = false },
+                new TestMethodMetadata.Fact { MethodName = "Test3", Skip = true, SkipReason = "Skip this one" }
             ]
         };
 
@@ -123,9 +123,9 @@ public class ExecutionEngineTests
             ClassName = "SequentialTestClass",
             TestMethods =
             [
-                new TestMethodMetadata { MethodName = "Test1" },
-                new TestMethodMetadata { MethodName = "Test2" },
-                new TestMethodMetadata { MethodName = "Test3" }
+                new TestMethodMetadata.Fact { MethodName = "Test1" },
+                new TestMethodMetadata.Fact { MethodName = "Test2" },
+                new TestMethodMetadata.Fact { MethodName = "Test3" }
             ]
         };
 
@@ -153,10 +153,10 @@ public class ExecutionEngineTests
             ClassName = "ParallelTestClass",
             TestMethods =
             [
-                new TestMethodMetadata { MethodName = "ParallelTest1" },
-                new TestMethodMetadata { MethodName = "ParallelTest2" },
-                new TestMethodMetadata { MethodName = "ParallelTest3" },
-                new TestMethodMetadata { MethodName = "ParallelTest4" }
+                new TestMethodMetadata.Fact { MethodName = "ParallelTest1" },
+                new TestMethodMetadata.Fact { MethodName = "ParallelTest2" },
+                new TestMethodMetadata.Fact { MethodName = "ParallelTest3" },
+                new TestMethodMetadata.Fact { MethodName = "ParallelTest4" }
             ]
         };
 
@@ -185,8 +185,8 @@ public class ExecutionEngineTests
             ClassName = "StopOnFailureTestClass",
             TestMethods =
             [
-                new TestMethodMetadata { MethodName = "Test1" },
-                new TestMethodMetadata { MethodName = "Test2" }
+                new TestMethodMetadata.Fact { MethodName = "Test1" },
+                new TestMethodMetadata.Fact { MethodName = "Test2" }
             ]
         };
 
@@ -216,8 +216,8 @@ public class ExecutionEngineTests
                 ClassName = "TestClass1",
                 TestMethods =
                 [
-                    new TestMethodMetadata { MethodName = "Test1A" },
-                    new TestMethodMetadata { MethodName = "Test1B" }
+                    new TestMethodMetadata.Fact { MethodName = "Test1A" },
+                    new TestMethodMetadata.Fact { MethodName = "Test1B" }
                 ]
             },
             new TestClassMetadata
@@ -225,8 +225,8 @@ public class ExecutionEngineTests
                 ClassName = "TestClass2",
                 TestMethods =
                 [
-                    new TestMethodMetadata { MethodName = "Test2A" },
-                    new TestMethodMetadata { MethodName = "Test2B" }
+                    new TestMethodMetadata.Fact { MethodName = "Test2A" },
+                    new TestMethodMetadata.Fact { MethodName = "Test2B" }
                 ]
             }
         };
@@ -251,7 +251,7 @@ public class ExecutionEngineTests
             ClassName = "TimingTestClass",
             TestMethods =
             [
-                new TestMethodMetadata { MethodName = "TimedTest" }
+                new TestMethodMetadata.Fact { MethodName = "TimedTest" }
             ]
         };
 
@@ -277,11 +277,11 @@ public class ExecutionEngineTests
             ClassName = "FailingTestClass",
             TestMethods =
             [
-                new TestMethodMetadata
+                new TestMethodMetadata.Fact
                 {
                     MethodName = "FailingTest",
                     Skip = false,
-                    ExecuteAsync = async (ct) =>
+                    Body = async (ct) =>
                     {
                         await Task.CompletedTask;
                         throw new InvalidOperationException("Test intentionally failed");
@@ -315,11 +315,11 @@ public class ExecutionEngineTests
             ClassName = "AsyncTestClass",
             TestMethods =
             [
-                new TestMethodMetadata
+                new TestMethodMetadata.Fact
                 {
                     MethodName = "AsyncTest",
                     IsAsync = true,
-                    ExecuteAsync = async (ct) =>
+                    Body = async (ct) =>
                     {
                         await Task.Delay(50, ct); // Simulate async work
                         asyncExecuted = true;

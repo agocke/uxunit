@@ -44,16 +44,41 @@ public static class TestExecutionEngine
         {
             foreach (var testMethod in testClass.TestMethods)
             {
-                // For now, we'll need to update this when generators are ready
-                // to provide execution delegates directly in metadata
-                tests.Add(new TestDescriptor
+                // Pattern match on Fact vs Theory
+                switch (testMethod)
                 {
-                    Metadata = testMethod,
-                    ClassName = testClass.ClassName,
-                    AssemblyName = testClass.Properties.TryGetValue("AssemblyName", out var asm)
-                        ? asm?.ToString() ?? "Unknown"
-                        : "Unknown"
-                });
+                    case TestMethodMetadata.Fact fact:
+                        // Fact: Execute once
+                        tests.Add(new TestDescriptor
+                        {
+                            Metadata = fact,
+                            TestCase = null,
+                            TestCaseIndex = -1,
+                            ClassName = testClass.ClassName,
+                            AssemblyName = testClass.Properties.TryGetValue("AssemblyName", out var asm1)
+                                ? asm1?.ToString() ?? "Unknown"
+                                : "Unknown"
+                        });
+                        break;
+
+                    case TestMethodMetadata.Theory theory:
+                        // Theory: Execute once per test case
+                        for (int i = 0; i < theory.TestCases.Count; i++)
+                        {
+                            var testCase = theory.TestCases[i];
+                            tests.Add(new TestDescriptor
+                            {
+                                Metadata = theory,
+                                TestCase = testCase,
+                                TestCaseIndex = i,
+                                ClassName = testClass.ClassName,
+                                AssemblyName = testClass.Properties.TryGetValue("AssemblyName", out var asm2)
+                                    ? asm2?.ToString() ?? "Unknown"
+                                    : "Unknown"
+                            });
+                        }
+                        break;
+                }
             }
         }
 
@@ -117,7 +142,17 @@ public static class TestExecutionEngine
         TestExecutionOptions options,
         CancellationToken cancellationToken)
     {
-        // Check if test should be skipped
+        // Check if test case should be skipped
+        if (test.TestCase?.Skip == true)
+        {
+            return TestResult.Skipped(
+                GenerateTestId(test),
+                test.Metadata.MethodName,
+                test.TestCase.SkipReason ?? "Test case marked as skipped",
+                test.ClassName);
+        }
+
+        // Check if test method should be skipped
         if (test.Metadata.Skip)
         {
             return TestResult.Skipped(
@@ -130,53 +165,78 @@ public static class TestExecutionEngine
         var testId = GenerateTestId(test);
         var startTime = DateTime.UtcNow;
 
-        // If execution delegate is provided, invoke it
-        if (test.Metadata.ExecuteAsync != null)
+        try
         {
-            try
+            // Pattern match on Fact vs Theory
+            switch (test.Metadata)
             {
-                // Execute the test code
-                await test.Metadata.ExecuteAsync(cancellationToken);
+                case TestMethodMetadata.Fact fact:
+                    if (fact.Body != null)
+                    {
+                        await fact.Body(cancellationToken);
+                    }
+                    // else: No body - test passes (placeholder for generator)
+                    break;
 
-                // If we get here, test passed
-                var endTime = DateTime.UtcNow;
-                return TestResult.Success(
-                    testId,
-                    test.Metadata.MethodName,
-                    endTime - startTime,
-                    startTime,
-                    endTime,
-                    test.ClassName);
+                case TestMethodMetadata.Theory theory:
+                    if (test.TestCase == null)
+                    {
+                        throw new InvalidOperationException("Theory test descriptor must have a TestCase");
+                    }
+                    if (theory.ParameterizedBody != null)
+                    {
+                        await theory.ParameterizedBody(test.TestCase.Arguments, cancellationToken);
+                    }
+                    // else: No body - test passes (placeholder for generator)
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unknown test method type: {test.Metadata.GetType()}");
             }
-            catch (Exception ex)
-            {
-                // If the delegate throws, create a failure result
-                var endTime = DateTime.UtcNow;
-                return TestResult.Failure(
-                    testId,
-                    test.Metadata.MethodName,
-                    ex,
-                    endTime - startTime,
-                    startTime,
-                    endTime,
-                    test.ClassName);
-            }
+
+            // If we get here, test passed
+            var endTime = DateTime.UtcNow;
+            return TestResult.Success(
+                testId,
+                test.Metadata.MethodName,
+                endTime - startTime,
+                startTime,
+                endTime,
+                test.ClassName);
         }
-
-        // No delegate provided - return placeholder success
-        // (This will be used when generators provide the delegate)
-        return TestResult.Success(
-            testId,
-            test.Metadata.MethodName,
-            TimeSpan.Zero,
-            startTime,
-            DateTime.UtcNow,
-            test.ClassName);
+        catch (Exception ex)
+        {
+            // If the delegate throws, create a failure result
+            var endTime = DateTime.UtcNow;
+            return TestResult.Failure(
+                testId,
+                test.Metadata.MethodName,
+                ex,
+                endTime - startTime,
+                startTime,
+                endTime,
+                test.ClassName);
+        }
     }
 
     private static string GenerateTestId(TestDescriptor test)
     {
-        return $"{test.ClassName}.{test.Metadata.MethodName}";
+        var baseId = $"{test.ClassName}.{test.Metadata.MethodName}";
+
+        // If this is a test case with a display name, use it
+        if (test.TestCase?.DisplayName != null)
+        {
+            return $"{baseId}({test.TestCase.DisplayName})";
+        }
+
+        // If this is a test case with an index, include it
+        if (test.TestCaseIndex >= 0)
+        {
+            return $"{baseId}[{test.TestCaseIndex}]";
+        }
+
+        // Regular test without cases
+        return baseId;
     }
 
     private class TestDescriptor
@@ -184,5 +244,7 @@ public static class TestExecutionEngine
         public required TestMethodMetadata Metadata { get; init; }
         public required string ClassName { get; init; }
         public required string AssemblyName { get; init; }
+        public TestCaseMetadata? TestCase { get; init; }
+        public int TestCaseIndex { get; init; } = -1;
     }
 }
