@@ -135,38 +135,18 @@ public static class TestExecutionEngine
         {
             try
             {
-                var result = await test.Metadata.ExecuteAsync(cancellationToken);
-                // The delegate returns a complete TestResult, but we need to enrich it with ClassName
-                // Since ClassName is init-only, we need to create a new result if it's not set
-                if (string.IsNullOrEmpty(result.ClassName))
-                {
-                    // Re-create the result with the ClassName populated
-                    return result.Status switch
-                    {
-                        TestStatus.Passed => TestResult.Success(
-                            result.TestId,
-                            result.TestName,
-                            result.Duration,
-                            result.StartTime,
-                            result.EndTime,
-                            test.ClassName),
-                        TestStatus.Failed => TestResult.Failure(
-                            result.TestId,
-                            result.TestName,
-                            new Exception(result.ErrorMessage ?? "Test failed"),
-                            result.Duration,
-                            result.StartTime,
-                            result.EndTime,
-                            test.ClassName),
-                        TestStatus.Skipped => TestResult.Skipped(
-                            result.TestId,
-                            result.TestName,
-                            result.SkipReason ?? "Skipped",
-                            test.ClassName),
-                        _ => result
-                    };
-                }
-                return result;
+                // Execute the test code
+                await test.Metadata.ExecuteAsync(cancellationToken);
+
+                // If we get here, test passed
+                var endTime = DateTime.UtcNow;
+                return TestResult.Success(
+                    testId,
+                    test.Metadata.MethodName,
+                    endTime - startTime,
+                    startTime,
+                    endTime,
+                    test.ClassName);
             }
             catch (Exception ex)
             {

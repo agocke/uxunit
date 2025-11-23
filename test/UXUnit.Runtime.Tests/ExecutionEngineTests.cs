@@ -1,8 +1,6 @@
 using System;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
-using UXUnit.Runtime;
 using XunitFactAttribute = Xunit.FactAttribute;
 using XunitAssert = Xunit.Assert;
 
@@ -23,32 +21,28 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "SimpleTestClass",
-            TestMethods = new[]
-            {
+            TestMethods =
+            [
                 new TestMethodMetadata
                 {
                     MethodName = "SimplePassingTest",
                     Skip = false,
                     ExecuteAsync = async (ct) =>
                     {
+                        // This is the actual test code - just set a flag and succeed
                         executed = true;
                         await Task.CompletedTask;
-                        return TestResult.Success(
-                            "SimpleTestClass.SimplePassingTest",
-                            "SimplePassingTest",
-                            TimeSpan.FromMilliseconds(10),
-                            DateTime.UtcNow.AddMilliseconds(-10),
-                            DateTime.UtcNow);
+                        // No exception = test passes
                     }
                 }
-            }
+            ]
         };
 
         var options = TestExecutionOptions.Default;
 
         // Act
         var results = await TestExecutionEngine.ExecuteTestsAsync(
-            new[] { testMetadata },
+            [testMetadata],
             options);
 
         // Assert
@@ -67,22 +61,22 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "SkippedTestClass",
-            TestMethods = new[]
-            {
+            TestMethods =
+            [
                 new TestMethodMetadata
                 {
                     MethodName = "SkippedTest",
                     Skip = true,
                     SkipReason = "Test intentionally skipped for testing"
                 }
-            }
+            ]
         };
 
         var options = TestExecutionOptions.Default;
 
         // Act
         var results = await TestExecutionEngine.ExecuteTestsAsync(
-            new[] { testMetadata },
+            [testMetadata],
             options);
 
         // Assert
@@ -99,25 +93,25 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "MultiTestClass",
-            TestMethods = new[]
-            {
+            TestMethods =
+            [
                 new TestMethodMetadata { MethodName = "Test1", Skip = false },
                 new TestMethodMetadata { MethodName = "Test2", Skip = false },
                 new TestMethodMetadata { MethodName = "Test3", Skip = true, SkipReason = "Skip this one" }
-            }
+            ]
         };
 
         var options = TestExecutionOptions.Default;
 
         // Act
         var results = await TestExecutionEngine.ExecuteTestsAsync(
-            new[] { testMetadata },
+            [testMetadata],
             options);
 
         // Assert
         XunitAssert.Equal(3, results.Length);
         XunitAssert.Equal(2, results.Count(r => r.Status == TestStatus.Passed));
-        XunitAssert.Single(results.Where(r => r.Status == TestStatus.Skipped));
+        XunitAssert.Single(results, r => r.Status == TestStatus.Skipped);
     }
 
     [XunitFact]
@@ -127,12 +121,12 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "SequentialTestClass",
-            TestMethods = new[]
-            {
+            TestMethods =
+            [
                 new TestMethodMetadata { MethodName = "Test1" },
                 new TestMethodMetadata { MethodName = "Test2" },
                 new TestMethodMetadata { MethodName = "Test3" }
-            }
+            ]
         };
 
         var options = new TestExecutionOptions
@@ -142,7 +136,7 @@ public class ExecutionEngineTests
 
         // Act
         var results = await TestExecutionEngine.ExecuteTestsAsync(
-            new[] { testMetadata },
+            [testMetadata],
             options);
 
         // Assert
@@ -157,13 +151,13 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "ParallelTestClass",
-            TestMethods = new[]
-            {
+            TestMethods =
+            [
                 new TestMethodMetadata { MethodName = "ParallelTest1" },
                 new TestMethodMetadata { MethodName = "ParallelTest2" },
                 new TestMethodMetadata { MethodName = "ParallelTest3" },
                 new TestMethodMetadata { MethodName = "ParallelTest4" }
-            }
+            ]
         };
 
         var options = new TestExecutionOptions
@@ -174,7 +168,7 @@ public class ExecutionEngineTests
 
         // Act
         var results = await TestExecutionEngine.ExecuteTestsAsync(
-            new[] { testMetadata },
+            [testMetadata],
             options);
 
         // Assert
@@ -189,11 +183,11 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "StopOnFailureTestClass",
-            TestMethods = new[]
-            {
+            TestMethods =
+            [
                 new TestMethodMetadata { MethodName = "Test1" },
                 new TestMethodMetadata { MethodName = "Test2" }
-            }
+            ]
         };
 
         var options = new TestExecutionOptions
@@ -204,7 +198,7 @@ public class ExecutionEngineTests
 
         // Act
         var results = await TestExecutionEngine.ExecuteTestsAsync(
-            new[] { testMetadata },
+            [testMetadata],
             options);
 
         // Assert: All should execute since none fail (placeholder implementation)
@@ -220,20 +214,20 @@ public class ExecutionEngineTests
             new TestClassMetadata
             {
                 ClassName = "TestClass1",
-                TestMethods = new[]
-                {
+                TestMethods =
+                [
                     new TestMethodMetadata { MethodName = "Test1A" },
                     new TestMethodMetadata { MethodName = "Test1B" }
-                }
+                ]
             },
             new TestClassMetadata
             {
                 ClassName = "TestClass2",
-                TestMethods = new[]
-                {
+                TestMethods =
+                [
                     new TestMethodMetadata { MethodName = "Test2A" },
                     new TestMethodMetadata { MethodName = "Test2B" }
-                }
+                ]
             }
         };
 
@@ -255,17 +249,17 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TimingTestClass",
-            TestMethods = new[]
-            {
+            TestMethods =
+            [
                 new TestMethodMetadata { MethodName = "TimedTest" }
-            }
+            ]
         };
 
         var options = TestExecutionOptions.Default;
 
         // Act
         var results = await TestExecutionEngine.ExecuteTestsAsync(
-            new[] { testMetadata },
+            [testMetadata],
             options);
 
         // Assert
@@ -281,8 +275,8 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "FailingTestClass",
-            TestMethods = new[]
-            {
+            TestMethods =
+            [
                 new TestMethodMetadata
                 {
                     MethodName = "FailingTest",
@@ -293,14 +287,14 @@ public class ExecutionEngineTests
                         throw new InvalidOperationException("Test intentionally failed");
                     }
                 }
-            }
+            ]
         };
 
         var options = TestExecutionOptions.Default;
 
         // Act
         var results = await TestExecutionEngine.ExecuteTestsAsync(
-            new[] { testMetadata },
+            [testMetadata],
             options);
 
         // Assert
@@ -319,8 +313,8 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "AsyncTestClass",
-            TestMethods = new[]
-            {
+            TestMethods =
+            [
                 new TestMethodMetadata
                 {
                     MethodName = "AsyncTest",
@@ -329,22 +323,17 @@ public class ExecutionEngineTests
                     {
                         await Task.Delay(50, ct); // Simulate async work
                         asyncExecuted = true;
-                        return TestResult.Success(
-                            "AsyncTestClass.AsyncTest",
-                            "AsyncTest",
-                            TimeSpan.FromMilliseconds(50),
-                            DateTime.UtcNow.AddMilliseconds(-50),
-                            DateTime.UtcNow);
+                        // No exception = test passes
                     }
                 }
-            }
+            ]
         };
 
         var options = TestExecutionOptions.Default;
 
         // Act
         var results = await TestExecutionEngine.ExecuteTestsAsync(
-            new[] { testMetadata },
+            [testMetadata],
             options);
 
         // Assert

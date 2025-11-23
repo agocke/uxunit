@@ -6,19 +6,14 @@
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
     <IsTestProject>true</IsTestProject>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
 
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/UXUnit.Core/UXUnit.Core.csproj" />
     <ProjectReference Include="../../src/UXUnit.Runtime/UXUnit.Runtime.csproj" />
-    <ProjectReference
-      Include="../../src/UXUnit.Generators/UXUnit.Generators.csproj"
-      OutputItemType="Analyzer"
-      ReferenceOutputAssembly="false"
-    />
   </ItemGroup>
 
   <ItemGroup>
