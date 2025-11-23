@@ -1,6 +1,9 @@
 using System;
 using System.Threading.Tasks;
-using Xunit;
+using XunitFactAttribute = Xunit.FactAttribute;
+using XunitTheoryAttribute = Xunit.TheoryAttribute;
+using XunitInlineDataAttribute = Xunit.InlineDataAttribute;
+using XunitAssert = Xunit.Assert;
 
 namespace UXUnit.Runtime.Tests;
 
@@ -10,33 +13,33 @@ namespace UXUnit.Runtime.Tests;
 /// </summary>
 public class BasicRuntimeTests
 {
-    [Fact]
+    [Xunit.Fact]
     public void SimpleTest_ShouldPass()
     {
         var value = 2 + 2;
 
-        Assert.Equal(4, value);
+        XunitAssert.Equal(4, value);
     }
 
-    [Fact]
+    [XunitFact]
     public void SimpleTest_ShouldFail()
     {
         // This test is intentionally designed to fail for testing purposes
         // Uncomment the line below to see failure handling
-        // Assert.Equal(5, 2 + 2);
+        // XunitAssert.Equal(5, 2 + 2);
 
         // For now, we'll make it pass so the test suite passes
-        Assert.True(true);
+        XunitAssert.True(true);
     }
 
-    [Fact]
+    [XunitFact]
     public async Task AsyncTest_ShouldPass()
     {
         await Task.Delay(10);
 
         var result = await GetValueAsync();
 
-        Assert.Equal("test", result);
+        XunitAssert.Equal("test", result);
     }
 
     // [Fact(Skip = "Demonstrating skip functionality")] - Skip not available in current XUnit version
@@ -45,16 +48,16 @@ public class BasicRuntimeTests
     {
         // This test should be skipped when UXUnit is fully implemented
         // For now, we skip it by not marking it as a Fact
-        Assert.True(true, "This test is manually skipped for now");
+        XunitAssert.True(true, "This test is manually skipped for now");
     }
 
-    [Fact]
+    [XunitFact]
     public void TestWithOutput_ShouldCaptureOutput()
     {
         Console.WriteLine("This is test output");
         Console.WriteLine("Multiple lines of output");
 
-        Assert.True(true);
+        XunitAssert.True(true);
     }
 
     private static async Task<string> GetValueAsync()
@@ -69,35 +72,35 @@ public class BasicRuntimeTests
 /// </summary>
 public class ParameterizedTests
 {
-    [Theory]
-    [InlineData(1, 2, 3)]
-    [InlineData(5, 7, 12)]
-    [InlineData(-1, 1, 0)]
-    [InlineData(0, 0, 0)]
+    [XunitTheory]
+    [XunitInlineData(1, 2, 3)]
+    [XunitInlineData(5, 7, 12)]
+    [XunitInlineData(-1, 1, 0)]
+    [XunitInlineData(0, 0, 0)]
     public void Add_VariousInputs_ReturnsExpectedSum(int a, int b, int expected)
     {
         var result = a + b;
 
-        Assert.Equal(expected, result);
+        XunitAssert.Equal(expected, result);
     }
 
-    [Theory]
-    [InlineData("hello", 5)]
-    [InlineData("world", 5)]
-    [InlineData("", 0)]
+    [XunitTheory]
+    [XunitInlineData("hello", 5)]
+    [XunitInlineData("world", 5)]
+    [XunitInlineData("", 0)]
     public void StringLength_VariousInputs_ReturnsExpectedLength(string input, int expectedLength)
     {
         var result = input.Length;
 
-        Assert.Equal(expectedLength, result);
+        XunitAssert.Equal(expectedLength, result);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
+    [XunitTheory]
+    [XunitInlineData(true)]
+    [XunitInlineData(false)]
     public void BooleanTest_WithDisplayNames_ShouldPass(bool value)
     {
-        Assert.True(value || !value); // Always true
+        XunitAssert.True(value || !value); // Always true
     }
 }
 
@@ -113,16 +116,16 @@ public class LifecycleTests : IDisposable
         // Constructor should be called for each test
     }
 
-    [Fact]
+    [XunitFact]
     public void Test1_ShouldHaveCleanState()
     {
-        Assert.False(_disposed);
+        XunitAssert.False(_disposed);
     }
 
-    [Fact]
+    [XunitFact]
     public void Test2_ShouldHaveCleanState()
     {
-        Assert.False(_disposed);
+        XunitAssert.False(_disposed);
     }
 
     public void Dispose()
@@ -136,16 +139,16 @@ public class LifecycleTests : IDisposable
 /// </summary>
 public class ExceptionHandlingTests
 {
-    [Fact]
+    [XunitFact]
     public void TestThatThrowsException_ShouldBeHandledGracefully()
     {
         // This test will pass because we don't throw an exception
-        // In a real scenario, you'd use Assert.Throws<T> to test for expected exceptions
+        // In a real scenario, you'd use XunitAssert.Throws<T> to test for expected exceptions
         var value = 42;
-        Assert.True(value > 0);
+        XunitAssert.True(value > 0);
     }
 
-    [Fact]
+    [XunitFact]
     public void TestWithTimeout_ShouldCompleteInTime()
     {
         // Simulate some work that completes quickly
@@ -154,15 +157,15 @@ public class ExceptionHandlingTests
             var _ = Math.Sqrt(i);
         }
 
-        Assert.True(true);
+        XunitAssert.True(true);
     }
 
-    [Fact]
+    [XunitFact]
     public async Task AsyncTestWithTimeout_ShouldCompleteInTime()
     {
         // Simulate async work that completes quickly
         await Task.Delay(10);
 
-        Assert.True(true);
+        XunitAssert.True(true);
     }
 }
