@@ -33,19 +33,10 @@ public interface ITestResultReporter
 /// </summary>
 public sealed class TestRunInfo
 {
-    /// <summary>
-    /// Gets or sets the total number of tests to run.
-    /// </summary>
     public int TotalTests { get; init; }
 
-    /// <summary>
-    /// Gets or sets the test run ID.
-    /// </summary>
     public string RunId { get; init; } = Guid.NewGuid().ToString();
 
-    /// <summary>
-    /// Gets or sets the start time of the test run.
-    /// </summary>
     public DateTime StartTime { get; init; } = DateTime.UtcNow;
 }
 
@@ -54,39 +45,18 @@ public sealed class TestRunInfo
 /// </summary>
 public sealed class TestRunSummary
 {
-    /// <summary>
-    /// Gets or sets the total number of tests.
-    /// </summary>
     public int TotalTests { get; init; }
 
-    /// <summary>
-    /// Gets or sets the number of passed tests.
-    /// </summary>
     public int PassedTests { get; init; }
 
-    /// <summary>
-    /// Gets or sets the number of failed tests.
-    /// </summary>
     public int FailedTests { get; init; }
 
-    /// <summary>
-    /// Gets or sets the number of skipped tests.
-    /// </summary>
     public int SkippedTests { get; init; }
 
-    /// <summary>
-    /// Gets or sets the total duration of all tests.
-    /// </summary>
     public TimeSpan TotalDuration { get; init; }
 
-    /// <summary>
-    /// Gets the pass rate as a percentage (0.0 to 1.0).
-    /// </summary>
     public double PassRate => TotalTests > 0 ? (double)PassedTests / TotalTests : 0.0;
 
-    /// <summary>
-    /// Gets whether all tests passed.
-    /// </summary>
     public bool AllPassed => FailedTests == 0;
 
     /// <summary>

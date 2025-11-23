@@ -20,9 +20,6 @@ public sealed class ConsoleTestReporter : ITestResultReporter
         _verbose = verbose;
     }
 
-    /// <summary>
-    /// Reports the start of a test run.
-    /// </summary>
     public void ReportTestRunStart(TestRunInfo info)
     {
         Console.WriteLine($"UXUnit Test Run Started - ID: {info.RunId}");
@@ -30,9 +27,6 @@ public sealed class ConsoleTestReporter : ITestResultReporter
         Console.WriteLine();
     }
 
-    /// <summary>
-    /// Reports the completion of a single test.
-    /// </summary>
     public void ReportTestComplete(TestResult result)
     {
         _completedTests++;
@@ -69,9 +63,6 @@ public sealed class ConsoleTestReporter : ITestResultReporter
         }
     }
 
-    /// <summary>
-    /// Reports the completion of the test run.
-    /// </summary>
     public void ReportTestRunComplete(TestRunSummary summary)
     {
         Console.WriteLine();

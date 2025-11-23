@@ -9,24 +9,12 @@ namespace UXUnit;
 /// </summary>
 public interface ITestContext
 {
-    /// <summary>
-    /// Gets the name of the current test.
-    /// </summary>
     string TestName { get; }
 
-    /// <summary>
-    /// Gets the name of the test class.
-    /// </summary>
     string ClassName { get; }
 
-    /// <summary>
-    /// Gets the name of the test assembly.
-    /// </summary>
     string AssemblyName { get; }
 
-    /// <summary>
-    /// Gets the cancellation token for the test execution.
-    /// </summary>
     CancellationToken CancellationToken { get; }
 
     /// <summary>
@@ -57,9 +45,6 @@ public interface ITestContext
     /// <returns>The property value, or default if not found.</returns>
     T? GetProperty<T>(string name);
 
-    /// <summary>
-    /// Gets all properties from the test context.
-    /// </summary>
     IReadOnlyDictionary<string, object?> Properties { get; }
 }
 

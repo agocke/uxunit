@@ -13,9 +13,6 @@ namespace UXUnit;
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class FactAttribute : Attribute
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="FactAttribute"/> class.
-    /// </summary>
     public FactAttribute() { }
 }
 
@@ -26,9 +23,6 @@ public sealed class FactAttribute : Attribute
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class TheoryAttribute : Attribute
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="TheoryAttribute"/> class.
-    /// </summary>
     public TheoryAttribute() { }
 }
 
@@ -39,9 +33,6 @@ public sealed class TheoryAttribute : Attribute
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public sealed class InlineDataAttribute : Attribute
 {
-    /// <summary>
-    /// Gets the test data arguments.
-    /// </summary>
     public object?[] Data { get; }
 
     /// <summary>
