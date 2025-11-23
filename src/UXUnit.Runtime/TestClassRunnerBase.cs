@@ -23,7 +23,10 @@ public abstract class TestClassRunnerBase : ITestClassRunner
     /// <param name="context">The test context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The test results for all methods in the class.</returns>
-    public virtual async Task<TestResult[]> RunAllTestsAsync(ITestContext context, CancellationToken cancellationToken = default)
+    public virtual async Task<TestResult[]> RunAllTestsAsync(
+        ITestContext context,
+        CancellationToken cancellationToken = default
+    )
     {
         var results = new TestResult[Metadata.TestMethods.Count];
 
@@ -46,12 +49,18 @@ public abstract class TestClassRunnerBase : ITestClassRunner
     /// <param name="context">The test context.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The test result for the specified method.</returns>
-    public virtual async Task<TestResult> RunTestAsync(string methodName, ITestContext context, CancellationToken cancellationToken = default)
+    public virtual async Task<TestResult> RunTestAsync(
+        string methodName,
+        ITestContext context,
+        CancellationToken cancellationToken = default
+    )
     {
         var methodMetadata = Metadata.TestMethods.FirstOrDefault(m => m.MethodName == methodName);
         if (methodMetadata == null)
         {
-            throw new InvalidOperationException($"Test method '{methodName}' not found in class '{Metadata.ClassName}'");
+            throw new InvalidOperationException(
+                $"Test method '{methodName}' not found in class '{Metadata.ClassName}'"
+            );
         }
 
         // Create test-specific context
@@ -71,7 +80,11 @@ public abstract class TestClassRunnerBase : ITestClassRunner
     /// <summary>
     /// Runs a single test method without parameters.
     /// </summary>
-    protected virtual async Task<TestResult> RunSingleTest(TestMethodMetadata metadata, ITestContext context, CancellationToken cancellationToken)
+    protected virtual async Task<TestResult> RunSingleTest(
+        TestMethodMetadata metadata,
+        ITestContext context,
+        CancellationToken cancellationToken
+    )
     {
         var testInstance = CreateTestInstance();
         var testMethodDelegate = GetTestMethodDelegate(metadata.MethodName);
@@ -79,7 +92,14 @@ public abstract class TestClassRunnerBase : ITestClassRunner
         try
         {
             await ExecuteClassSetup(testInstance, context);
-            var result = await TestExecutor.ExecuteTestAsync(testInstance, testMethodDelegate, metadata, context, null, cancellationToken);
+            var result = await TestExecutor.ExecuteTestAsync(
+                testInstance,
+                testMethodDelegate,
+                metadata,
+                context,
+                null,
+                cancellationToken
+            );
             await ExecuteClassCleanup(testInstance, context);
             return result;
         }
@@ -92,9 +112,15 @@ public abstract class TestClassRunnerBase : ITestClassRunner
     /// <summary>
     /// Runs a parameterized test with multiple test cases.
     /// </summary>
-    protected virtual async Task<TestResult> RunParameterizedTest(TestMethodMetadata metadata, ITestContext context, CancellationToken cancellationToken)
+    protected virtual async Task<TestResult> RunParameterizedTest(
+        TestMethodMetadata metadata,
+        ITestContext context,
+        CancellationToken cancellationToken
+    )
     {
-        var parameterizedTestMethodDelegate = GetParameterizedTestMethodDelegate(metadata.MethodName);
+        var parameterizedTestMethodDelegate = GetParameterizedTestMethodDelegate(
+            metadata.MethodName
+        );
         var allResults = new TestResult[metadata.TestCases.Count];
 
         for (int i = 0; i < metadata.TestCases.Count; i++)
@@ -109,12 +135,27 @@ public abstract class TestClassRunnerBase : ITestClassRunner
                 // Skip test case if marked for skipping
                 if (testCase.Skip)
                 {
-                    var testId = GenerateTestId(context.ClassName, metadata.MethodName, testCase.Arguments);
-                    allResults[i] = TestResult.Skipped(testId, metadata.MethodName, testCase.SkipReason ?? "Test case marked as skipped");
+                    var testId = GenerateTestId(
+                        context.ClassName,
+                        metadata.MethodName,
+                        testCase.Arguments
+                    );
+                    allResults[i] = TestResult.Skipped(
+                        testId,
+                        metadata.MethodName,
+                        testCase.SkipReason ?? "Test case marked as skipped"
+                    );
                 }
                 else
                 {
-                    allResults[i] = await TestExecutor.ExecuteParameterizedTestAsync(testInstance, parameterizedTestMethodDelegate, metadata, context, testCase.Arguments, cancellationToken);
+                    allResults[i] = await TestExecutor.ExecuteParameterizedTestAsync(
+                        testInstance,
+                        parameterizedTestMethodDelegate,
+                        metadata,
+                        context,
+                        testCase.Arguments,
+                        cancellationToken
+                    );
                 }
 
                 await ExecuteClassCleanup(testInstance, context);
@@ -130,10 +171,13 @@ public abstract class TestClassRunnerBase : ITestClassRunner
 
         // For parameterized tests, we return the first failure or the last result if all passed
         var firstFailure = allResults.FirstOrDefault(r => r.Status == TestStatus.Failed);
-        return firstFailure ?? allResults.LastOrDefault() ?? TestResult.Skipped(
-            GenerateTestId(context.ClassName, metadata.MethodName, null),
-            metadata.MethodName,
-            "No test cases executed");
+        return firstFailure
+            ?? allResults.LastOrDefault()
+            ?? TestResult.Skipped(
+                GenerateTestId(context.ClassName, metadata.MethodName, null),
+                metadata.MethodName,
+                "No test cases executed"
+            );
     }
 
     /// <summary>
@@ -149,7 +193,9 @@ public abstract class TestClassRunnerBase : ITestClassRunner
     /// <summary>
     /// Gets the parameterized test method delegate for the specified test method. Override this method in generated classes.
     /// </summary>
-    protected abstract Func<object, object?[], Task> GetParameterizedTestMethodDelegate(string methodName);
+    protected abstract Func<object, object?[], Task> GetParameterizedTestMethodDelegate(
+        string methodName
+    );
 
     /// <summary>
     /// Executes class-level setup methods. Override in generated classes to call specific setup methods.
@@ -180,8 +226,13 @@ public abstract class TestClassRunnerBase : ITestClassRunner
         }
 
         // Fallback: create a new context
-        return new TestContext(testName, classContext.ClassName, classContext.AssemblyName,
-            classContext.GetTestOutput(), classContext.CancellationToken);
+        return new TestContext(
+            testName,
+            classContext.ClassName,
+            classContext.AssemblyName,
+            classContext.GetTestOutput(),
+            classContext.CancellationToken
+        );
     }
 
     /// <summary>
@@ -206,7 +257,11 @@ public abstract class TestClassRunnerBase : ITestClassRunner
     /// <summary>
     /// Generates a unique test ID for a test case.
     /// </summary>
-    protected static string GenerateTestId(string className, string methodName, object?[]? arguments)
+    protected static string GenerateTestId(
+        string className,
+        string methodName,
+        object?[]? arguments
+    )
     {
         var baseId = $"{className}.{methodName}";
 

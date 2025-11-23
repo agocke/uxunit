@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -9,8 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Assets/UXUnitCompat/UXUnitCompat.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="../Assets/XUnitCompat/XUnitCompat.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference
+      Include="../Assets/UXUnitCompat/UXUnitCompat.csproj"
+      ReferenceOutputAssembly="false"
+    />
+    <ProjectReference
+      Include="../Assets/XUnitCompat/XUnitCompat.csproj"
+      ReferenceOutputAssembly="false"
+    />
   </ItemGroup>
 
   <ItemGroup>
@@ -18,5 +23,4 @@
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
-
 </Project>

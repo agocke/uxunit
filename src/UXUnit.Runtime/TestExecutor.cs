@@ -28,7 +28,8 @@ public static class TestExecutor
         TestMethodMetadata metadata,
         ITestContext context,
         object?[]? arguments = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var testId = GenerateTestId(context.ClassName, metadata.MethodName, arguments);
         var startTime = DateTime.UtcNow;
@@ -39,14 +40,25 @@ public static class TestExecutor
             // Check if test should be skipped
             if (metadata.Skip)
             {
-                return TestResult.Skipped(testId, metadata.MethodName, metadata.SkipReason ?? "Test marked as skipped");
+                return TestResult.Skipped(
+                    testId,
+                    metadata.MethodName,
+                    metadata.SkipReason ?? "Test marked as skipped"
+                );
             }
 
             // Execute pre-test hooks
             await ExecutePreTestHooks(testInstance, metadata, context);
 
             // Execute the test method with timeout handling
-            var result = await ExecuteTestWithTimeout(testInstance, testMethodDelegate, metadata, context, arguments, cancellationToken);
+            var result = await ExecuteTestWithTimeout(
+                testInstance,
+                testMethodDelegate,
+                metadata,
+                context,
+                arguments,
+                cancellationToken
+            );
 
             // Execute post-test hooks
             await ExecutePostTestHooks(testInstance, metadata, context, result);
@@ -59,7 +71,14 @@ public static class TestExecutor
             var endTime = DateTime.UtcNow;
 
             // Create failure result
-            var failureResult = TestResult.Failure(testId, metadata.MethodName, ex, stopwatch.Elapsed, startTime, endTime);
+            var failureResult = TestResult.Failure(
+                testId,
+                metadata.MethodName,
+                ex,
+                stopwatch.Elapsed,
+                startTime,
+                endTime
+            );
 
             // Try to execute post-test hooks even on failure
             try
@@ -92,7 +111,8 @@ public static class TestExecutor
         TestMethodMetadata metadata,
         ITestContext context,
         object?[] arguments,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var testId = GenerateTestId(context.ClassName, metadata.MethodName, arguments);
         var startTime = DateTime.UtcNow;
@@ -103,14 +123,25 @@ public static class TestExecutor
             // Check if test should be skipped
             if (metadata.Skip)
             {
-                return TestResult.Skipped(testId, metadata.MethodName, metadata.SkipReason ?? "Test marked as skipped");
+                return TestResult.Skipped(
+                    testId,
+                    metadata.MethodName,
+                    metadata.SkipReason ?? "Test marked as skipped"
+                );
             }
 
             // Execute pre-test hooks
             await ExecutePreTestHooks(testInstance, metadata, context);
 
             // Execute the test method with timeout handling
-            var result = await ExecuteParameterizedTestWithTimeout(testInstance, parameterizedTestMethodDelegate, metadata, context, arguments, cancellationToken);
+            var result = await ExecuteParameterizedTestWithTimeout(
+                testInstance,
+                parameterizedTestMethodDelegate,
+                metadata,
+                context,
+                arguments,
+                cancellationToken
+            );
 
             // Execute post-test hooks
             await ExecutePostTestHooks(testInstance, metadata, context, result);
@@ -123,7 +154,14 @@ public static class TestExecutor
             var endTime = DateTime.UtcNow;
 
             // Create failure result
-            var failureResult = TestResult.Failure(testId, metadata.MethodName, ex, stopwatch.Elapsed, startTime, endTime);
+            var failureResult = TestResult.Failure(
+                testId,
+                metadata.MethodName,
+                ex,
+                stopwatch.Elapsed,
+                startTime,
+                endTime
+            );
 
             // Try to execute post-test hooks even on failure
             try
@@ -149,7 +187,8 @@ public static class TestExecutor
         TestMethodMetadata metadata,
         ITestContext context,
         object?[]? arguments,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var testId = GenerateTestId(context.ClassName, metadata.MethodName, arguments);
         var startTime = DateTime.UtcNow;
@@ -161,7 +200,8 @@ public static class TestExecutor
             using var timeoutCts = CreateTimeoutCancellationToken(metadata.TimeoutMs);
             using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken,
-                timeoutCts?.Token ?? CancellationToken.None);
+                timeoutCts?.Token ?? CancellationToken.None
+            );
 
             var combinedToken = combinedCts.Token;
 
@@ -184,7 +224,7 @@ public static class TestExecutor
                 StartTime = startTime,
                 EndTime = endTime,
                 TestCaseArguments = arguments,
-                OutputLines = ExtractOutputLines(context)
+                OutputLines = ExtractOutputLines(context),
             };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -196,8 +236,17 @@ public static class TestExecutor
         {
             // Test timed out
             stopwatch.Stop();
-            var timeoutException = new TimeoutException($"Test '{metadata.MethodName}' timed out after {metadata.TimeoutMs}ms");
-            return TestResult.Failure(testId, metadata.MethodName, timeoutException, stopwatch.Elapsed, startTime, DateTime.UtcNow);
+            var timeoutException = new TimeoutException(
+                $"Test '{metadata.MethodName}' timed out after {metadata.TimeoutMs}ms"
+            );
+            return TestResult.Failure(
+                testId,
+                metadata.MethodName,
+                timeoutException,
+                stopwatch.Elapsed,
+                startTime,
+                DateTime.UtcNow
+            );
         }
     }
 
@@ -210,7 +259,8 @@ public static class TestExecutor
         TestMethodMetadata metadata,
         ITestContext context,
         object?[] arguments,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var testId = GenerateTestId(context.ClassName, metadata.MethodName, arguments);
         var startTime = DateTime.UtcNow;
@@ -222,7 +272,8 @@ public static class TestExecutor
             using var timeoutCts = CreateTimeoutCancellationToken(metadata.TimeoutMs);
             using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken,
-                timeoutCts?.Token ?? CancellationToken.None);
+                timeoutCts?.Token ?? CancellationToken.None
+            );
 
             var combinedToken = combinedCts.Token;
 
@@ -245,7 +296,7 @@ public static class TestExecutor
                 StartTime = startTime,
                 EndTime = endTime,
                 TestCaseArguments = arguments,
-                OutputLines = ExtractOutputLines(context)
+                OutputLines = ExtractOutputLines(context),
             };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -257,15 +308,28 @@ public static class TestExecutor
         {
             // Test timed out
             stopwatch.Stop();
-            var timeoutException = new TimeoutException($"Test '{metadata.MethodName}' timed out after {metadata.TimeoutMs}ms");
-            return TestResult.Failure(testId, metadata.MethodName, timeoutException, stopwatch.Elapsed, startTime, DateTime.UtcNow);
+            var timeoutException = new TimeoutException(
+                $"Test '{metadata.MethodName}' timed out after {metadata.TimeoutMs}ms"
+            );
+            return TestResult.Failure(
+                testId,
+                metadata.MethodName,
+                timeoutException,
+                stopwatch.Elapsed,
+                startTime,
+                DateTime.UtcNow
+            );
         }
     }
 
     /// <summary>
     /// Executes pre-test lifecycle hooks. Override in generated classes for specific setup methods.
     /// </summary>
-    private static async Task ExecutePreTestHooks(object testInstance, TestMethodMetadata metadata, ITestContext context)
+    private static async Task ExecutePreTestHooks(
+        object testInstance,
+        TestMethodMetadata metadata,
+        ITestContext context
+    )
     {
         // No default pre-test hooks - source generator should create specific implementations
         await Task.CompletedTask;
@@ -274,7 +338,12 @@ public static class TestExecutor
     /// <summary>
     /// Executes post-test lifecycle hooks. Override in generated classes for specific cleanup methods.
     /// </summary>
-    private static async Task ExecutePostTestHooks(object testInstance, TestMethodMetadata metadata, ITestContext context, TestResult result)
+    private static async Task ExecutePostTestHooks(
+        object testInstance,
+        TestMethodMetadata metadata,
+        ITestContext context,
+        TestResult result
+    )
     {
         // No default post-test hooks - source generator should create specific implementations
         await Task.CompletedTask;
@@ -285,7 +354,9 @@ public static class TestExecutor
     /// </summary>
     private static CancellationTokenSource? CreateTimeoutCancellationToken(int timeoutMs)
     {
-        return timeoutMs > 0 ? new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs)) : null;
+        return timeoutMs > 0
+            ? new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs))
+            : null;
     }
 
     /// <summary>

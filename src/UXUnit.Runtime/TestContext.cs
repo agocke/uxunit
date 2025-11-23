@@ -25,7 +25,8 @@ public sealed class TestContext : ITestContext
         string className,
         string assemblyName,
         ITestOutput output,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         TestName = testName;
         ClassName = className;
@@ -45,10 +46,9 @@ public sealed class TestContext : ITestContext
         string className,
         string assemblyName,
         ITestOutput output,
-        CancellationToken cancellationToken)
-        : this(string.Empty, className, assemblyName, output, cancellationToken)
-    {
-    }
+        CancellationToken cancellationToken
+    )
+        : this(string.Empty, className, assemblyName, output, cancellationToken) { }
 
     /// <summary>
     /// Gets the name of the current test.

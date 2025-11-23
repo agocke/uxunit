@@ -27,7 +27,7 @@ public enum TestStatus
     /// <summary>
     /// The test result is inconclusive.
     /// </summary>
-    Inconclusive
+    Inconclusive,
 }
 
 /// <summary>
@@ -118,7 +118,8 @@ public sealed class TestResult
     /// <summary>
     /// Gets additional properties associated with the test result.
     /// </summary>
-    public IReadOnlyDictionary<string, object?> Properties { get; init; } = new Dictionary<string, object?>();
+    public IReadOnlyDictionary<string, object?> Properties { get; init; } =
+        new Dictionary<string, object?>();
 
     /// <summary>
     /// Gets the arguments used for parameterized tests.
@@ -128,7 +129,13 @@ public sealed class TestResult
     /// <summary>
     /// Creates a successful test result.
     /// </summary>
-    public static TestResult Success(string testId, string testName, TimeSpan duration, DateTime startTime, DateTime endTime) =>
+    public static TestResult Success(
+        string testId,
+        string testName,
+        TimeSpan duration,
+        DateTime startTime,
+        DateTime endTime
+    ) =>
         new()
         {
             TestId = testId,
@@ -136,13 +143,20 @@ public sealed class TestResult
             Status = TestStatus.Passed,
             Duration = duration,
             StartTime = startTime,
-            EndTime = endTime
+            EndTime = endTime,
         };
 
     /// <summary>
     /// Creates a failed test result.
     /// </summary>
-    public static TestResult Failure(string testId, string testName, Exception exception, TimeSpan duration, DateTime startTime, DateTime endTime) =>
+    public static TestResult Failure(
+        string testId,
+        string testName,
+        Exception exception,
+        TimeSpan duration,
+        DateTime startTime,
+        DateTime endTime
+    ) =>
         new()
         {
             TestId = testId,
@@ -153,7 +167,7 @@ public sealed class TestResult
             EndTime = endTime,
             ErrorMessage = exception.Message,
             ErrorType = exception.GetType().FullName,
-            StackTrace = exception.StackTrace
+            StackTrace = exception.StackTrace,
         };
 
     /// <summary>
@@ -165,7 +179,7 @@ public sealed class TestResult
             TestId = testId,
             TestName = testName,
             Status = TestStatus.Skipped,
-            SkipReason = reason
+            SkipReason = reason,
         };
 }
 
@@ -202,12 +216,14 @@ public sealed class TestClassMetadata
     /// <summary>
     /// Gets the test methods in this class.
     /// </summary>
-    public IReadOnlyList<TestMethodMetadata> TestMethods { get; init; } = Array.Empty<TestMethodMetadata>();
+    public IReadOnlyList<TestMethodMetadata> TestMethods { get; init; } =
+        Array.Empty<TestMethodMetadata>();
 
     /// <summary>
     /// Gets additional properties for the test class.
     /// </summary>
-    public IReadOnlyDictionary<string, object?> Properties { get; init; } = new Dictionary<string, object?>();
+    public IReadOnlyDictionary<string, object?> Properties { get; init; } =
+        new Dictionary<string, object?>();
 }
 
 /// <summary>
@@ -248,7 +264,8 @@ public sealed class TestMethodMetadata
     /// <summary>
     /// Gets the test cases for this method (for parameterized tests).
     /// </summary>
-    public IReadOnlyList<TestCaseMetadata> TestCases { get; init; } = Array.Empty<TestCaseMetadata>();
+    public IReadOnlyList<TestCaseMetadata> TestCases { get; init; } =
+        Array.Empty<TestCaseMetadata>();
 
     /// <summary>
     /// Gets whether this is an async method.
@@ -263,7 +280,8 @@ public sealed class TestMethodMetadata
     /// <summary>
     /// Gets additional properties for the test method.
     /// </summary>
-    public IReadOnlyDictionary<string, object?> Properties { get; init; } = new Dictionary<string, object?>();
+    public IReadOnlyDictionary<string, object?> Properties { get; init; } =
+        new Dictionary<string, object?>();
 }
 
 /// <summary>
@@ -294,7 +312,8 @@ public sealed class TestCaseMetadata
     /// <summary>
     /// Gets additional properties for this test case.
     /// </summary>
-    public IReadOnlyDictionary<string, object?> Properties { get; init; } = new Dictionary<string, object?>();
+    public IReadOnlyDictionary<string, object?> Properties { get; init; } =
+        new Dictionary<string, object?>();
 }
 
 /// <summary>
@@ -335,7 +354,8 @@ public sealed class TestRunResult
     /// <summary>
     /// Gets additional properties for the test run.
     /// </summary>
-    public IReadOnlyDictionary<string, object?> Properties { get; init; } = new Dictionary<string, object?>();
+    public IReadOnlyDictionary<string, object?> Properties { get; init; } =
+        new Dictionary<string, object?>();
 
     /// <summary>
     /// Gets the total number of tests executed.
@@ -444,6 +464,8 @@ public sealed class TestRunConfiguration
 public sealed class NullTestOutput : ITestOutput
 {
     public static readonly NullTestOutput Instance = new();
+
     public void WriteLine(string message) { }
+
     public void WriteLine(string format, params object[] args) { }
 }

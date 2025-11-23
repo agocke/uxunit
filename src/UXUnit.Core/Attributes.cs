@@ -16,9 +16,7 @@ public sealed class FactAttribute : Attribute
     /// <summary>
     /// Initializes a new instance of the <see cref="FactAttribute"/> class.
     /// </summary>
-    public FactAttribute()
-    {
-    }
+    public FactAttribute() { }
 }
 
 /// <summary>
@@ -31,9 +29,7 @@ public sealed class TheoryAttribute : Attribute
     /// <summary>
     /// Initializes a new instance of the <see cref="TheoryAttribute"/> class.
     /// </summary>
-    public TheoryAttribute()
-    {
-    }
+    public TheoryAttribute() { }
 }
 
 /// <summary>

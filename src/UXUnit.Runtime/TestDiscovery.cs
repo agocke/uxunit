@@ -57,7 +57,9 @@ public static class TestDiscovery
     /// </summary>
     /// <param name="runners">Test runners to use directly instead of registered ones.</param>
     /// <returns>Collection of test class runners.</returns>
-    public static IEnumerable<ITestClassRunner> DiscoverTestRunners(IEnumerable<ITestClassRunner> runners)
+    public static IEnumerable<ITestClassRunner> DiscoverTestRunners(
+        IEnumerable<ITestClassRunner> runners
+    )
     {
         // For explicit test runners, use them directly
         return runners?.ToList() ?? DiscoverTestRunners();
@@ -73,15 +75,16 @@ public static class TestDiscovery
         var runnerList = runners.ToList();
         var totalClasses = runnerList.Count;
         var totalMethods = runnerList.Sum(r => r.Metadata.TestMethods.Count);
-        var totalTestCases = runnerList.Sum(r => r.Metadata.TestMethods.Sum(m =>
-            m.TestCases.Count > 0 ? m.TestCases.Count : 1));
+        var totalTestCases = runnerList.Sum(r =>
+            r.Metadata.TestMethods.Sum(m => m.TestCases.Count > 0 ? m.TestCases.Count : 1)
+        );
 
         return new TestDiscoverySummary
         {
             TotalClasses = totalClasses,
             TotalMethods = totalMethods,
             TotalTestCases = totalTestCases,
-            Runners = runnerList
+            Runners = runnerList,
         };
     }
 }
@@ -109,5 +112,6 @@ public class TestDiscoverySummary
     /// <summary>
     /// Gets or sets the collection of discovered test runners.
     /// </summary>
-    public IEnumerable<ITestClassRunner> Runners { get; set; } = Enumerable.Empty<ITestClassRunner>();
+    public IEnumerable<ITestClassRunner> Runners { get; set; } =
+        Enumerable.Empty<ITestClassRunner>();
 }

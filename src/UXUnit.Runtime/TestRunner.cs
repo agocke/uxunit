@@ -35,7 +35,8 @@ public class TestRunner : ITestRunner
     public async Task<TestRunResult> RunTestsAsync(
         IEnumerable<ITestClassRunner> testClassRunners,
         TestRunConfiguration configuration,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var runId = Guid.NewGuid().ToString();
         var startTime = DateTime.UtcNow;
@@ -54,19 +55,31 @@ public class TestRunner : ITestRunner
             // Run test classes based on parallel execution configuration
             if (configuration.ParallelExecution && runners.Count > 1)
             {
-                await RunTestClassesInParallel(runners, configuration, allResults, cancellationToken,
-                    (completed) => {
+                await RunTestClassesInParallel(
+                    runners,
+                    configuration,
+                    allResults,
+                    cancellationToken,
+                    (completed) =>
+                    {
                         var newExecuted = Interlocked.Add(ref executedTests, completed);
                         ReportProgress(newExecuted, totalTests);
-                    });
+                    }
+                );
             }
             else
             {
-                await RunTestClassesSequentially(runners, configuration, allResults, cancellationToken,
-                    (completed) => {
+                await RunTestClassesSequentially(
+                    runners,
+                    configuration,
+                    allResults,
+                    cancellationToken,
+                    (completed) =>
+                    {
                         executedTests += completed;
                         ReportProgress(executedTests, totalTests);
-                    });
+                    }
+                );
             }
         }
         catch (OperationCanceledException)
@@ -85,7 +98,7 @@ public class TestRunner : ITestRunner
             StartTime = startTime,
             EndTime = endTime,
             TestResults = testResults,
-            Summary = summary
+            Summary = summary,
         };
 
         ReportFinalResults(result);
@@ -97,7 +110,8 @@ public class TestRunner : ITestRunner
         TestRunConfiguration configuration,
         ConcurrentBag<TestResult> allResults,
         CancellationToken cancellationToken,
-        Action<int> onProgress)
+        Action<int> onProgress
+    )
     {
         foreach (var runner in runners)
         {
@@ -113,7 +127,10 @@ public class TestRunner : ITestRunner
             onProgress(classResults.Length);
 
             // Stop on first failure if configured
-            if (configuration.StopOnFirstFailure && classResults.Any(r => r.Status == TestStatus.Failed))
+            if (
+                configuration.StopOnFirstFailure
+                && classResults.Any(r => r.Status == TestStatus.Failed)
+            )
             {
                 _output.WriteLine("Stopping execution on first failure as requested.");
                 break;
@@ -126,42 +143,48 @@ public class TestRunner : ITestRunner
         TestRunConfiguration configuration,
         ConcurrentBag<TestResult> allResults,
         CancellationToken cancellationToken,
-        Action<int> onProgress)
+        Action<int> onProgress
+    )
     {
         var parallelOptions = new ParallelOptions
         {
             MaxDegreeOfParallelism = configuration.MaxDegreeOfParallelism,
-            CancellationToken = cancellationToken
+            CancellationToken = cancellationToken,
         };
 
         var stopOnFailure = configuration.StopOnFirstFailure;
         var hasFailure = false;
 
-        await Parallel.ForEachAsync(runners, parallelOptions, async (runner, ct) =>
-        {
-            if (stopOnFailure && hasFailure)
-                return;
-
-            var classResults = await RunTestClass(runner, configuration, ct);
-            foreach (var result in classResults)
+        await Parallel.ForEachAsync(
+            runners,
+            parallelOptions,
+            async (runner, ct) =>
             {
-                allResults.Add(result);
-            }
+                if (stopOnFailure && hasFailure)
+                    return;
 
-            onProgress(classResults.Length);
+                var classResults = await RunTestClass(runner, configuration, ct);
+                foreach (var result in classResults)
+                {
+                    allResults.Add(result);
+                }
 
-            if (stopOnFailure && classResults.Any(r => r.Status == TestStatus.Failed))
-            {
-                hasFailure = true;
-                _output.WriteLine("Stopping execution on first failure as requested.");
+                onProgress(classResults.Length);
+
+                if (stopOnFailure && classResults.Any(r => r.Status == TestStatus.Failed))
+                {
+                    hasFailure = true;
+                    _output.WriteLine("Stopping execution on first failure as requested.");
+                }
             }
-        });
+        );
     }
 
     private async Task<TestResult[]> RunTestClass(
         ITestClassRunner runner,
         TestRunConfiguration configuration,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var context = CreateTestContext(runner.Metadata, configuration);
 
@@ -170,14 +193,23 @@ public class TestRunner : ITestRunner
             // Check if the entire class should be skipped
             if (runner.Metadata.Skip)
             {
-                _output.WriteLine($"Skipping test class {runner.Metadata.ClassName}: {runner.Metadata.SkipReason}");
-                return runner.Metadata.TestMethods
-                    .Select(m => TestResult.Skipped($"{runner.Metadata.ClassName}.{m.MethodName}",
-                        m.MethodName, runner.Metadata.SkipReason ?? "Class skipped"))
+                _output.WriteLine(
+                    $"Skipping test class {runner.Metadata.ClassName}: {runner.Metadata.SkipReason}"
+                );
+                return runner
+                    .Metadata.TestMethods.Select(m =>
+                        TestResult.Skipped(
+                            $"{runner.Metadata.ClassName}.{m.MethodName}",
+                            m.MethodName,
+                            runner.Metadata.SkipReason ?? "Class skipped"
+                        )
+                    )
                     .ToArray();
             }
 
-            _output.WriteLine($"Running test class: {runner.Metadata.DisplayName ?? runner.Metadata.ClassName}");
+            _output.WriteLine(
+                $"Running test class: {runner.Metadata.DisplayName ?? runner.Metadata.ClassName}"
+            );
 
             // Execute class-level lifecycle hooks if the runner supports them
             await ExecuteClassSetupHooks(runner, context);
@@ -190,23 +222,37 @@ public class TestRunner : ITestRunner
         }
         catch (Exception ex)
         {
-            _output.WriteLine($"Error running test class {runner.Metadata.ClassName}: {ex.Message}");
+            _output.WriteLine(
+                $"Error running test class {runner.Metadata.ClassName}: {ex.Message}"
+            );
 
             // Create failure results for all methods in the class
-            return runner.Metadata.TestMethods
-                .Select(m => TestResult.Failure($"{runner.Metadata.ClassName}.{m.MethodName}",
-                    m.MethodName, ex, TimeSpan.Zero, DateTime.UtcNow, DateTime.UtcNow))
+            return runner
+                .Metadata.TestMethods.Select(m =>
+                    TestResult.Failure(
+                        $"{runner.Metadata.ClassName}.{m.MethodName}",
+                        m.MethodName,
+                        ex,
+                        TimeSpan.Zero,
+                        DateTime.UtcNow,
+                        DateTime.UtcNow
+                    )
+                )
                 .ToArray();
         }
     }
 
-    private TestContext CreateTestContext(TestClassMetadata classMetadata, TestRunConfiguration configuration)
+    private TestContext CreateTestContext(
+        TestClassMetadata classMetadata,
+        TestRunConfiguration configuration
+    )
     {
         return new TestContext(
             className: classMetadata.ClassName,
             assemblyName: GetAssemblyName(classMetadata),
             output: _output,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: CancellationToken.None
+        );
     }
 
     private static string GetAssemblyName(TestClassMetadata classMetadata)
@@ -224,7 +270,11 @@ public class TestRunner : ITestRunner
         await Task.CompletedTask;
     }
 
-    private async Task ExecuteClassCleanupHooks(ITestClassRunner runner, TestContext context, TestResult[] results)
+    private async Task ExecuteClassCleanupHooks(
+        ITestClassRunner runner,
+        TestContext context,
+        TestResult[] results
+    )
     {
         // In a full implementation, this would execute any class-level cleanup methods
         // For now, we'll implement this as a no-op since it depends on the generated code structure
@@ -248,7 +298,7 @@ public class TestRunner : ITestRunner
             FailedTests = results.Count(r => r.Status == TestStatus.Failed),
             SkippedTests = results.Count(r => r.Status == TestStatus.Skipped),
             InconclusiveTests = results.Count(r => r.Status == TestStatus.Inconclusive),
-            TotalDuration = totalDuration
+            TotalDuration = totalDuration,
         };
     }
 
@@ -283,10 +333,10 @@ public class TestRunner : ITestRunner
                 {
                     _output.WriteLine($"   Error: {failedTest.ErrorMessage}");
                 }
-                    _output.WriteLine($"   Duration: {failedTest.Duration.TotalMilliseconds:F0}ms");
+                _output.WriteLine($"   Duration: {failedTest.Duration.TotalMilliseconds:F0}ms");
                 _output.WriteLine(string.Empty);
             }
-        }        // Final status
+        } // Final status
         if (result.HasFailures)
         {
             _output.WriteLine("❌ Test run FAILED");

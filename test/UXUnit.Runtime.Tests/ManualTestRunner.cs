@@ -22,21 +22,21 @@ public class ManualTestClassRunner : TestClassRunnerBase
                 MethodName = "PassingTest",
                 DisplayName = "A test that should pass",
                 IsAsync = false,
-                TimeoutMs = 0
+                TimeoutMs = 0,
             },
             new TestMethodMetadata
             {
                 MethodName = "AsyncTest",
                 DisplayName = "An async test that should pass",
                 IsAsync = true,
-                TimeoutMs = 0
+                TimeoutMs = 0,
             },
             new TestMethodMetadata
             {
                 MethodName = "FailingTest",
                 DisplayName = "A test that should fail",
                 IsAsync = false,
-                TimeoutMs = 0
+                TimeoutMs = 0,
             },
             new TestMethodMetadata
             {
@@ -45,7 +45,7 @@ public class ManualTestClassRunner : TestClassRunnerBase
                 Skip = true,
                 SkipReason = "This test is intentionally skipped for demonstration",
                 IsAsync = false,
-                TimeoutMs = 0
+                TimeoutMs = 0,
             },
             new TestMethodMetadata
             {
@@ -57,10 +57,10 @@ public class ManualTestClassRunner : TestClassRunnerBase
                 {
                     new TestCaseMetadata { Arguments = new object[] { 2, 2, 4 } },
                     new TestCaseMetadata { Arguments = new object[] { 3, 3, 6 } }, // This will fail
-                    new TestCaseMetadata { Arguments = new object[] { 5, 5, 10 } }
-                }
-            }
-        }
+                    new TestCaseMetadata { Arguments = new object[] { 5, 5, 10 } },
+                },
+            },
+        },
     };
 
     public override TestClassMetadata Metadata => _metadata;
@@ -74,32 +74,44 @@ public class ManualTestClassRunner : TestClassRunnerBase
     {
         return methodName switch
         {
-            "PassingTest" => (testInstance) => {
+            "PassingTest" => (testInstance) =>
+            {
                 ((ManualTestClass)testInstance).PassingTest();
                 return Task.CompletedTask;
             },
             "AsyncTest" => (testInstance) => ((ManualTestClass)testInstance).AsyncTest(),
-            "FailingTest" => (testInstance) => {
+            "FailingTest" => (testInstance) =>
+            {
                 ((ManualTestClass)testInstance).FailingTest();
                 return Task.CompletedTask;
             },
-            "SkippedTest" => (testInstance) => {
+            "SkippedTest" => (testInstance) =>
+            {
                 ((ManualTestClass)testInstance).SkippedTest();
                 return Task.CompletedTask;
             },
-            _ => throw new InvalidOperationException($"Unknown test method: {methodName}")
+            _ => throw new InvalidOperationException($"Unknown test method: {methodName}"),
         };
     }
 
-    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(string methodName)
+    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(
+        string methodName
+    )
     {
         return methodName switch
         {
-            "ParameterizedTest" => (testInstance, arguments) => {
-                ((ManualTestClass)testInstance).ParameterizedTest((int)arguments[0]!, (int)arguments[1]!, (int)arguments[2]!);
+            "ParameterizedTest" => (testInstance, arguments) =>
+            {
+                ((ManualTestClass)testInstance).ParameterizedTest(
+                    (int)arguments[0]!,
+                    (int)arguments[1]!,
+                    (int)arguments[2]!
+                );
                 return Task.CompletedTask;
             },
-            _ => throw new InvalidOperationException($"Unknown parameterized test method: {methodName}")
+            _ => throw new InvalidOperationException(
+                $"Unknown parameterized test method: {methodName}"
+            ),
         };
     }
 }
@@ -147,7 +159,9 @@ public class ManualTestClass : IDisposable
         Console.WriteLine("FailingTest is running");
 
         // This test is designed to fail
-        throw new InvalidOperationException("This test intentionally fails to demonstrate error handling");
+        throw new InvalidOperationException(
+            "This test intentionally fails to demonstrate error handling"
+        );
     }
 
     public void SkippedTest()

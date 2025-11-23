@@ -41,7 +41,6 @@ public class ExecutionEngineTests
 
         var result = await runner.RunTestsAsync(testRunners, config);
 
-
         Assert.Single(result.TestResults);
         Assert.Equal(TestStatus.Failed, result.TestResults[0].Status);
         Assert.Equal("FailingMethod", result.TestResults[0].TestName);
@@ -55,15 +54,12 @@ public class ExecutionEngineTests
     [Fact]
     public async Task TestRunner_WithSkippedTest_ShouldReturnSkippedResult()
     {
-
         var output = new BufferedTestOutput();
         var runner = new TestRunner(output);
         var testRunners = new ITestClassRunner[] { new SkippedTestRunner() };
         var config = new TestRunConfiguration { Output = output };
 
-
         var result = await runner.RunTestsAsync(testRunners, config);
-
 
         Assert.Single(result.TestResults);
         Assert.Equal(TestStatus.Skipped, result.TestResults[0].Status);
@@ -78,15 +74,12 @@ public class ExecutionEngineTests
     [Fact]
     public async Task TestRunner_WithAsyncTest_ShouldExecuteCorrectly()
     {
-
         var output = new BufferedTestOutput();
         var runner = new TestRunner(output);
         var testRunners = new ITestClassRunner[] { new AsyncTestRunner() };
         var config = new TestRunConfiguration { Output = output };
 
-
         var result = await runner.RunTestsAsync(testRunners, config);
-
 
         Assert.Single(result.TestResults);
         Assert.Equal(TestStatus.Passed, result.TestResults[0].Status);
@@ -97,15 +90,12 @@ public class ExecutionEngineTests
     [Fact]
     public async Task TestRunner_WithParameterizedTest_ShouldExecuteAllCases()
     {
-
         var output = new BufferedTestOutput();
         var runner = new TestRunner(output);
         var testRunners = new ITestClassRunner[] { new ParameterizedTestRunner() };
         var config = new TestRunConfiguration { Output = output };
 
-
         var result = await runner.RunTestsAsync(testRunners, config);
-
 
         Assert.Single(result.TestResults); // Parameterized tests return one result (first failure or last success)
 
@@ -118,7 +108,6 @@ public class ExecutionEngineTests
     [Fact]
     public async Task TestRunner_WithMixedResults_ShouldReturnCorrectSummary()
     {
-
         var output = new BufferedTestOutput();
         var runner = new TestRunner(output);
         var testRunners = new ITestClassRunner[]
@@ -126,13 +115,11 @@ public class ExecutionEngineTests
             new PassingTestRunner(),
             new FailingTestRunner(),
             new SkippedTestRunner(),
-            new AsyncTestRunner()
+            new AsyncTestRunner(),
         };
         var config = new TestRunConfiguration { Output = output };
 
-
         var result = await runner.RunTestsAsync(testRunners, config);
-
 
         Assert.Equal(4, result.TestResults.Count);
         Assert.Equal(2, result.PassedTests); // PassingTest + AsyncTest
@@ -145,22 +132,20 @@ public class ExecutionEngineTests
     [Fact]
     public async Task TestRunner_WithStopOnFirstFailure_ShouldStopAfterFirstFailure()
     {
-
         var output = new BufferedTestOutput();
         var runner = new TestRunner(output);
         var testRunners = new ITestClassRunner[]
         {
             new PassingTestRunner(),
             new FailingTestRunner(),
-            new PassingTestRunner() // This shouldn't run
+            new PassingTestRunner(), // This shouldn't run
         };
         var config = new TestRunConfiguration
         {
             Output = output,
             StopOnFirstFailure = true,
-            ParallelExecution = false // Sequential to ensure order
+            ParallelExecution = false, // Sequential to ensure order
         };
-
 
         var result = await runner.RunTestsAsync(testRunners, config);
 
@@ -172,16 +157,9 @@ public class ExecutionEngineTests
     [Fact]
     public void TestDiscovery_WithManualRunners_ShouldFindRunners()
     {
-
-        var runners = new ITestClassRunner[]
-        {
-            new PassingTestRunner(),
-            new FailingTestRunner()
-        };
-
+        var runners = new ITestClassRunner[] { new PassingTestRunner(), new FailingTestRunner() };
 
         var summary = TestDiscovery.GetDiscoverySummary(runners);
-
 
         Assert.Equal(2, summary.TotalClasses);
         Assert.Equal(2, summary.TotalMethods);
@@ -193,28 +171,35 @@ public class ExecutionEngineTests
 
 public class PassingTestRunner : TestClassRunnerBase
 {
-    public override TestClassMetadata Metadata => new()
-    {
-        ClassName = "PassingTestClass",
-        TestMethods = new[] { new TestMethodMetadata { MethodName = "PassingMethod" } }
-    };
+    public override TestClassMetadata Metadata =>
+        new()
+        {
+            ClassName = "PassingTestClass",
+            TestMethods = new[] { new TestMethodMetadata { MethodName = "PassingMethod" } },
+        };
 
     protected override object CreateTestInstance() => new PassingTestClass();
+
     protected override Func<object, Task> GetTestMethodDelegate(string methodName)
     {
         return methodName switch
         {
-            "PassingMethod" => (testInstance) => {
+            "PassingMethod" => (testInstance) =>
+            {
                 ((PassingTestClass)testInstance).PassingMethod();
                 return Task.CompletedTask;
             },
-            _ => throw new InvalidOperationException($"Unknown test method: {methodName}")
+            _ => throw new InvalidOperationException($"Unknown test method: {methodName}"),
         };
     }
 
-    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(string methodName)
+    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(
+        string methodName
+    )
     {
-        throw new InvalidOperationException($"No parameterized test methods in this runner: {methodName}");
+        throw new InvalidOperationException(
+            $"No parameterized test methods in this runner: {methodName}"
+        );
     }
 }
 
@@ -224,34 +209,42 @@ public class PassingTestClass
     {
         // This test always passes
         var result = 2 + 2;
-        if (result != 4) throw new Exception("Math is broken!");
+        if (result != 4)
+            throw new Exception("Math is broken!");
     }
 }
 
 public class FailingTestRunner : TestClassRunnerBase
 {
-    public override TestClassMetadata Metadata => new()
-    {
-        ClassName = "FailingTestClass",
-        TestMethods = new[] { new TestMethodMetadata { MethodName = "FailingMethod" } }
-    };
+    public override TestClassMetadata Metadata =>
+        new()
+        {
+            ClassName = "FailingTestClass",
+            TestMethods = new[] { new TestMethodMetadata { MethodName = "FailingMethod" } },
+        };
 
     protected override object CreateTestInstance() => new FailingTestClass();
+
     protected override Func<object, Task> GetTestMethodDelegate(string methodName)
     {
         return methodName switch
         {
-            "FailingMethod" => (testInstance) => {
+            "FailingMethod" => (testInstance) =>
+            {
                 ((FailingTestClass)testInstance).FailingMethod();
                 return Task.CompletedTask;
             },
-            _ => throw new InvalidOperationException($"Unknown test method: {methodName}")
+            _ => throw new InvalidOperationException($"Unknown test method: {methodName}"),
         };
     }
 
-    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(string methodName)
+    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(
+        string methodName
+    )
     {
-        throw new InvalidOperationException($"No parameterized test methods in this runner: {methodName}");
+        throw new InvalidOperationException(
+            $"No parameterized test methods in this runner: {methodName}"
+        );
     }
 }
 
@@ -265,33 +258,43 @@ public class FailingTestClass
 
 public class SkippedTestRunner : TestClassRunnerBase
 {
-    public override TestClassMetadata Metadata => new()
-    {
-        ClassName = "SkippedTestClass",
-        TestMethods = new[] { new TestMethodMetadata
+    public override TestClassMetadata Metadata =>
+        new()
         {
-            MethodName = "SkippedMethod",
-            Skip = true,
-            SkipReason = "Test intentionally skipped"
-        } }
-    };
+            ClassName = "SkippedTestClass",
+            TestMethods = new[]
+            {
+                new TestMethodMetadata
+                {
+                    MethodName = "SkippedMethod",
+                    Skip = true,
+                    SkipReason = "Test intentionally skipped",
+                },
+            },
+        };
 
     protected override object CreateTestInstance() => new SkippedTestClass();
+
     protected override Func<object, Task> GetTestMethodDelegate(string methodName)
     {
         return methodName switch
         {
-            "SkippedMethod" => (testInstance) => {
+            "SkippedMethod" => (testInstance) =>
+            {
                 ((SkippedTestClass)testInstance).SkippedMethod();
                 return Task.CompletedTask;
             },
-            _ => throw new InvalidOperationException($"Unknown test method: {methodName}")
+            _ => throw new InvalidOperationException($"Unknown test method: {methodName}"),
         };
     }
 
-    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(string methodName)
+    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(
+        string methodName
+    )
     {
-        throw new InvalidOperationException($"No parameterized test methods in this runner: {methodName}");
+        throw new InvalidOperationException(
+            $"No parameterized test methods in this runner: {methodName}"
+        );
     }
 }
 
@@ -305,29 +308,34 @@ public class SkippedTestClass
 
 public class AsyncTestRunner : TestClassRunnerBase
 {
-    public override TestClassMetadata Metadata => new()
-    {
-        ClassName = "AsyncTestClass",
-        TestMethods = new[] { new TestMethodMetadata
+    public override TestClassMetadata Metadata =>
+        new()
         {
-            MethodName = "AsyncMethod",
-            IsAsync = true
-        } }
-    };
+            ClassName = "AsyncTestClass",
+            TestMethods = new[]
+            {
+                new TestMethodMetadata { MethodName = "AsyncMethod", IsAsync = true },
+            },
+        };
 
     protected override object CreateTestInstance() => new AsyncTestClass();
+
     protected override Func<object, Task> GetTestMethodDelegate(string methodName)
     {
         return methodName switch
         {
             "AsyncMethod" => (testInstance) => ((AsyncTestClass)testInstance).AsyncMethod(),
-            _ => throw new InvalidOperationException($"Unknown test method: {methodName}")
+            _ => throw new InvalidOperationException($"Unknown test method: {methodName}"),
         };
     }
 
-    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(string methodName)
+    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(
+        string methodName
+    )
     {
-        throw new InvalidOperationException($"No parameterized test methods in this runner: {methodName}");
+        throw new InvalidOperationException(
+            $"No parameterized test methods in this runner: {methodName}"
+        );
     }
 }
 
@@ -337,7 +345,8 @@ public class AsyncTestClass
     {
         await Task.Delay(50); // Simulate async work
         var result = await GetResultAsync();
-        if (result != "success") throw new Exception("Async test failed");
+        if (result != "success")
+            throw new Exception("Async test failed");
     }
 
     private async Task<string> GetResultAsync()
@@ -349,36 +358,50 @@ public class AsyncTestClass
 
 public class ParameterizedTestRunner : TestClassRunnerBase
 {
-    public override TestClassMetadata Metadata => new()
-    {
-        ClassName = "ParameterizedTestClass",
-        TestMethods = new[] { new TestMethodMetadata
+    public override TestClassMetadata Metadata =>
+        new()
         {
-            MethodName = "ParameterizedMethod",
-            TestCases = new[]
+            ClassName = "ParameterizedTestClass",
+            TestMethods = new[]
             {
-                new TestCaseMetadata { Arguments = new object[] { 1, 2, 3 } },
-                new TestCaseMetadata { Arguments = new object[] { 5, 5, 10 } },
-                new TestCaseMetadata { Arguments = new object[] { 0, 100, 100 } }
-            }
-        } }
-    };
+                new TestMethodMetadata
+                {
+                    MethodName = "ParameterizedMethod",
+                    TestCases = new[]
+                    {
+                        new TestCaseMetadata { Arguments = new object[] { 1, 2, 3 } },
+                        new TestCaseMetadata { Arguments = new object[] { 5, 5, 10 } },
+                        new TestCaseMetadata { Arguments = new object[] { 0, 100, 100 } },
+                    },
+                },
+            },
+        };
 
     protected override object CreateTestInstance() => new ParameterizedTestClass();
+
     protected override Func<object, Task> GetTestMethodDelegate(string methodName)
     {
         throw new InvalidOperationException($"No simple test methods in this runner: {methodName}");
     }
 
-    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(string methodName)
+    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(
+        string methodName
+    )
     {
         return methodName switch
         {
-            "ParameterizedMethod" => (testInstance, arguments) => {
-                ((ParameterizedTestClass)testInstance).ParameterizedMethod((int)arguments[0]!, (int)arguments[1]!, (int)arguments[2]!);
+            "ParameterizedMethod" => (testInstance, arguments) =>
+            {
+                ((ParameterizedTestClass)testInstance).ParameterizedMethod(
+                    (int)arguments[0]!,
+                    (int)arguments[1]!,
+                    (int)arguments[2]!
+                );
                 return Task.CompletedTask;
             },
-            _ => throw new InvalidOperationException($"Unknown parameterized test method: {methodName}")
+            _ => throw new InvalidOperationException(
+                $"Unknown parameterized test method: {methodName}"
+            ),
         };
     }
 }

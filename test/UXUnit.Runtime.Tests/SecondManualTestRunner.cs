@@ -12,7 +12,7 @@ public class SecondManualTestClassRunner : TestClassRunnerBase
 {
     private static readonly TestClassMetadata _metadata = new()
     {
-        ClassName = "SecondManualTestClass", 
+        ClassName = "SecondManualTestClass",
         DisplayName = "Second Manual Test Class",
         TestMethods = new[]
         {
@@ -21,14 +21,14 @@ public class SecondManualTestClassRunner : TestClassRunnerBase
                 MethodName = "QuickTest",
                 DisplayName = "A quick test",
                 IsAsync = false,
-                TimeoutMs = 0
+                TimeoutMs = 0,
             },
             new TestMethodMetadata
             {
                 MethodName = "SlowAsyncTest",
                 DisplayName = "A slower async test",
                 IsAsync = true,
-                TimeoutMs = 0
+                TimeoutMs = 0,
             },
             new TestMethodMetadata
             {
@@ -38,24 +38,24 @@ public class SecondManualTestClassRunner : TestClassRunnerBase
                 TimeoutMs = 0,
                 TestCases = new[]
                 {
-                    new TestCaseMetadata 
-                    { 
+                    new TestCaseMetadata
+                    {
                         Arguments = new object[] { "multiply", 3, 4, 12 },
-                        DisplayName = "3 × 4 = 12"
+                        DisplayName = "3 × 4 = 12",
                     },
-                    new TestCaseMetadata 
-                    { 
+                    new TestCaseMetadata
+                    {
                         Arguments = new object[] { "divide", 10, 2, 5 },
-                        DisplayName = "10 ÷ 2 = 5"
+                        DisplayName = "10 ÷ 2 = 5",
                     },
-                    new TestCaseMetadata 
-                    { 
+                    new TestCaseMetadata
+                    {
                         Arguments = new object[] { "subtract", 8, 3, 5 },
-                        DisplayName = "8 - 3 = 5"
-                    }
-                }
-            }
-        }
+                        DisplayName = "8 - 3 = 5",
+                    },
+                },
+            },
+        },
     };
 
     public override TestClassMetadata Metadata => _metadata;
@@ -69,24 +69,36 @@ public class SecondManualTestClassRunner : TestClassRunnerBase
     {
         return methodName switch
         {
-            "QuickTest" => (testInstance) => { 
-                ((SecondManualTestClass)testInstance).QuickTest(); 
-                return Task.CompletedTask; 
+            "QuickTest" => (testInstance) =>
+            {
+                ((SecondManualTestClass)testInstance).QuickTest();
+                return Task.CompletedTask;
             },
-            "SlowAsyncTest" => (testInstance) => ((SecondManualTestClass)testInstance).SlowAsyncTest(),
-            _ => throw new InvalidOperationException($"Unknown test method: {methodName}")
+            "SlowAsyncTest" => (testInstance) =>
+                ((SecondManualTestClass)testInstance).SlowAsyncTest(),
+            _ => throw new InvalidOperationException($"Unknown test method: {methodName}"),
         };
     }
 
-    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(string methodName)
+    protected override Func<object, object?[], Task> GetParameterizedTestMethodDelegate(
+        string methodName
+    )
     {
         return methodName switch
         {
-            "MathTest" => (testInstance, arguments) => { 
-                ((SecondManualTestClass)testInstance).MathTest((string)arguments[0]!, (int)arguments[1]!, (int)arguments[2]!, (int)arguments[3]!); 
-                return Task.CompletedTask; 
+            "MathTest" => (testInstance, arguments) =>
+            {
+                ((SecondManualTestClass)testInstance).MathTest(
+                    (string)arguments[0]!,
+                    (int)arguments[1]!,
+                    (int)arguments[2]!,
+                    (int)arguments[3]!
+                );
+                return Task.CompletedTask;
             },
-            _ => throw new InvalidOperationException($"Unknown parameterized test method: {methodName}")
+            _ => throw new InvalidOperationException(
+                $"Unknown parameterized test method: {methodName}"
+            ),
         };
     }
 }
@@ -99,53 +111,53 @@ public class SecondManualTestClass
     public void QuickTest()
     {
         Console.WriteLine("QuickTest executing");
-        
+
         // Simple string test
         var text = "Hello, UXUnit!";
         if (text.Length != 14)
             throw new Exception($"Expected length 14, got {text.Length}");
-            
+
         Console.WriteLine("QuickTest passed");
     }
 
     public async Task SlowAsyncTest()
     {
         Console.WriteLine("SlowAsyncTest starting...");
-        
+
         // Simulate longer async operation
         await Task.Delay(100);
-        
+
         var numbers = new[] { 1, 2, 3, 4, 5 };
         var sum = 0;
-        
+
         foreach (var num in numbers)
         {
             sum += num;
             await Task.Delay(10); // Simulate async processing
         }
-        
+
         if (sum != 15)
             throw new Exception($"Expected sum 15, got {sum}");
-            
+
         Console.WriteLine("SlowAsyncTest completed");
     }
 
     public void MathTest(string operation, int a, int b, int expected)
     {
         Console.WriteLine($"MathTest: {operation} {a} and {b}, expecting {expected}");
-        
+
         int result = operation switch
         {
             "multiply" => a * b,
             "divide" => a / b,
             "subtract" => a - b,
             "add" => a + b,
-            _ => throw new ArgumentException($"Unknown operation: {operation}")
+            _ => throw new ArgumentException($"Unknown operation: {operation}"),
         };
-        
+
         if (result != expected)
             throw new Exception($"Operation {operation}({a}, {b}) = {result}, expected {expected}");
-            
+
         Console.WriteLine($"MathTest {operation} passed");
     }
 }

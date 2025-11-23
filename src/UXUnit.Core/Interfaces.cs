@@ -160,7 +160,8 @@ public interface ITestRunner
     System.Threading.Tasks.Task<TestRunResult> RunTestsAsync(
         IEnumerable<ITestClassRunner> testClassRunners,
         TestRunConfiguration configuration,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 }
 
 /// <summary>
@@ -181,7 +182,8 @@ public interface ITestClassRunner
     /// <returns>The test results for all methods in the class.</returns>
     System.Threading.Tasks.Task<TestResult[]> RunAllTestsAsync(
         ITestContext context,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Runs a specific test method.
@@ -193,5 +195,6 @@ public interface ITestClassRunner
     System.Threading.Tasks.Task<TestResult> RunTestAsync(
         string methodName,
         ITestContext context,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 }

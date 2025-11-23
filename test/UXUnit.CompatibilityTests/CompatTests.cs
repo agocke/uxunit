@@ -9,8 +9,22 @@ public class CompatibilityComparisonTests
     [Fact]
     public void CompareOutputs()
     {
-        var xbin = Path.Combine(AppContext.BaseDirectory, "..", "..", "XUnitCompat", "debug", "XUnitCompat");
-        var uxbin = Path.Combine(AppContext.BaseDirectory, "..", "..", "UXUnitCompat", "debug", "UXUnitCompat");
+        var xbin = Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "XUnitCompat",
+            "debug",
+            "XUnitCompat"
+        );
+        var uxbin = Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "UXUnitCompat",
+            "debug",
+            "UXUnitCompat"
+        );
 
         var xPsi = new ProcessStartInfo
         {
@@ -53,8 +67,8 @@ public class CompatibilityComparisonTests
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
-            }
+                CreateNoWindow = true,
+            },
         };
 
         var output = new StringBuilder();
@@ -62,12 +76,14 @@ public class CompatibilityComparisonTests
 
         process.OutputDataReceived += (sender, e) =>
         {
-            if (e.Data != null) output.AppendLine(e.Data);
+            if (e.Data != null)
+                output.AppendLine(e.Data);
         };
 
         process.ErrorDataReceived += (sender, e) =>
         {
-            if (e.Data != null) error.AppendLine(e.Data);
+            if (e.Data != null)
+                error.AppendLine(e.Data);
         };
 
         process.Start();
@@ -79,7 +95,7 @@ public class CompatibilityComparisonTests
         {
             ExitCode = process.ExitCode,
             Output = output.ToString(),
-            Error = error.ToString()
+            Error = error.ToString(),
         };
     }
 
