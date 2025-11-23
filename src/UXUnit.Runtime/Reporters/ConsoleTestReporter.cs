@@ -38,7 +38,7 @@ public sealed class ConsoleTestReporter : ITestResultReporter
                 TestStatus.Passed => "✓",
                 TestStatus.Failed => "✗",
                 TestStatus.Skipped => "⊝",
-                _ => "?"
+                _ => "?",
             };
 
             var color = result.Status switch
@@ -46,13 +46,15 @@ public sealed class ConsoleTestReporter : ITestResultReporter
                 TestStatus.Passed => ConsoleColor.Green,
                 TestStatus.Failed => ConsoleColor.Red,
                 TestStatus.Skipped => ConsoleColor.Yellow,
-                _ => ConsoleColor.Gray
+                _ => ConsoleColor.Gray,
             };
 
             Console.ForegroundColor = color;
             Console.Write(symbol);
             Console.ResetColor();
-            Console.WriteLine($" {result.ClassName}.{result.TestName} ({result.Duration.TotalMilliseconds:F0}ms)");
+            Console.WriteLine(
+                $" {result.ClassName}.{result.TestName} ({result.Duration.TotalMilliseconds:F0}ms)"
+            );
 
             if (result.Status == TestStatus.Failed && !string.IsNullOrEmpty(result.ErrorMessage))
             {

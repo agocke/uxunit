@@ -22,7 +22,8 @@ public static class TestExecutionEngine
     public static async Task<TestResult[]> ExecuteTestsAsync(
         IReadOnlyList<TestClassMetadata> testClasses,
         TestExecutionOptions options,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var allTests = CollectAllTests(testClasses);
 
@@ -36,7 +37,9 @@ public static class TestExecutionEngine
         }
     }
 
-    private static List<TestDescriptor> CollectAllTests(IReadOnlyList<TestClassMetadata> testClasses)
+    private static List<TestDescriptor> CollectAllTests(
+        IReadOnlyList<TestClassMetadata> testClasses
+    )
     {
         var tests = new List<TestDescriptor>();
 
@@ -49,16 +52,21 @@ public static class TestExecutionEngine
                 {
                     case TestMethodMetadata.Fact fact:
                         // Fact: Execute once
-                        tests.Add(new TestDescriptor
-                        {
-                            Metadata = fact,
-                            TestCase = null,
-                            TestCaseIndex = -1,
-                            ClassName = testClass.ClassName,
-                            AssemblyName = testClass.Properties.TryGetValue("AssemblyName", out var asm1)
-                                ? asm1?.ToString() ?? "Unknown"
-                                : "Unknown"
-                        });
+                        tests.Add(
+                            new TestDescriptor
+                            {
+                                Metadata = fact,
+                                TestCase = null,
+                                TestCaseIndex = -1,
+                                ClassName = testClass.ClassName,
+                                AssemblyName = testClass.Properties.TryGetValue(
+                                    "AssemblyName",
+                                    out var asm1
+                                )
+                                    ? asm1?.ToString() ?? "Unknown"
+                                    : "Unknown",
+                            }
+                        );
                         break;
 
                     case TestMethodMetadata.Theory theory:
@@ -66,16 +74,21 @@ public static class TestExecutionEngine
                         for (int i = 0; i < theory.TestCases.Count; i++)
                         {
                             var testCase = theory.TestCases[i];
-                            tests.Add(new TestDescriptor
-                            {
-                                Metadata = theory,
-                                TestCase = testCase,
-                                TestCaseIndex = i,
-                                ClassName = testClass.ClassName,
-                                AssemblyName = testClass.Properties.TryGetValue("AssemblyName", out var asm2)
-                                    ? asm2?.ToString() ?? "Unknown"
-                                    : "Unknown"
-                            });
+                            tests.Add(
+                                new TestDescriptor
+                                {
+                                    Metadata = theory,
+                                    TestCase = testCase,
+                                    TestCaseIndex = i,
+                                    ClassName = testClass.ClassName,
+                                    AssemblyName = testClass.Properties.TryGetValue(
+                                        "AssemblyName",
+                                        out var asm2
+                                    )
+                                        ? asm2?.ToString() ?? "Unknown"
+                                        : "Unknown",
+                                }
+                            );
                         }
                         break;
                 }
@@ -88,7 +101,8 @@ public static class TestExecutionEngine
     private static async Task<TestResult[]> ExecuteSequentiallyAsync(
         List<TestDescriptor> tests,
         TestExecutionOptions options,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var results = new List<TestResult>(tests.Count);
 
@@ -110,7 +124,8 @@ public static class TestExecutionEngine
     private static async Task<TestResult[]> ExecuteInParallelAsync(
         List<TestDescriptor> tests,
         TestExecutionOptions options,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var results = new System.Collections.Concurrent.ConcurrentBag<TestResult>();
         var shouldStop = false;
@@ -120,7 +135,7 @@ public static class TestExecutionEngine
             new ParallelOptions
             {
                 MaxDegreeOfParallelism = options.MaxDegreeOfParallelism,
-                CancellationToken = cancellationToken
+                CancellationToken = cancellationToken,
             },
             async (test, ct) =>
             {
@@ -132,7 +147,8 @@ public static class TestExecutionEngine
 
                 if (options.StopOnFirstFailure && result.Status == TestStatus.Failed)
                     shouldStop = true;
-            });
+            }
+        );
 
         return results.OrderBy(r => r.TestId).ToArray();
     }
@@ -140,7 +156,8 @@ public static class TestExecutionEngine
     private static async Task<TestResult> ExecuteTestAsync(
         TestDescriptor test,
         TestExecutionOptions options,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         // Check if test case should be skipped
         if (test.TestCase?.Skip == true)
@@ -149,7 +166,9 @@ public static class TestExecutionEngine
                 GenerateTestId(test),
                 test.Metadata.MethodName,
                 test.TestCase.SkipReason ?? "Test case marked as skipped",
-                test.ClassName);
+                test.ClassName,
+                test.AssemblyName
+            );
         }
 
         // Check if test method should be skipped
@@ -159,7 +178,9 @@ public static class TestExecutionEngine
                 GenerateTestId(test),
                 test.Metadata.MethodName,
                 test.Metadata.SkipReason ?? "Test marked as skipped",
-                test.ClassName);
+                test.ClassName,
+                test.AssemblyName
+            );
         }
 
         var testId = GenerateTestId(test);
@@ -181,7 +202,9 @@ public static class TestExecutionEngine
                 case TestMethodMetadata.Theory theory:
                     if (test.TestCase == null)
                     {
-                        throw new InvalidOperationException("Theory test descriptor must have a TestCase");
+                        throw new InvalidOperationException(
+                            "Theory test descriptor must have a TestCase"
+                        );
                     }
                     if (theory.ParameterizedBody != null)
                     {
@@ -191,7 +214,9 @@ public static class TestExecutionEngine
                     break;
 
                 default:
-                    throw new InvalidOperationException($"Unknown test method type: {test.Metadata.GetType()}");
+                    throw new InvalidOperationException(
+                        $"Unknown test method type: {test.Metadata.GetType()}"
+                    );
             }
 
             // If we get here, test passed
@@ -200,9 +225,9 @@ public static class TestExecutionEngine
                 testId,
                 test.Metadata.MethodName,
                 endTime - startTime,
-                startTime,
-                endTime,
-                test.ClassName);
+                test.ClassName,
+                test.AssemblyName
+            );
         }
         catch (Exception ex)
         {
@@ -213,9 +238,9 @@ public static class TestExecutionEngine
                 test.Metadata.MethodName,
                 ex,
                 endTime - startTime,
-                startTime,
-                endTime,
-                test.ClassName);
+                test.ClassName,
+                test.AssemblyName
+            );
         }
     }
 

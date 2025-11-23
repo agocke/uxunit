@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using XunitFactAttribute = Xunit.FactAttribute;
 using XunitAssert = Xunit.Assert;
+using XunitFactAttribute = Xunit.FactAttribute;
 
 namespace UXUnit.Runtime.Tests;
 
@@ -28,17 +28,14 @@ public class ParameterizedTestExecutionTests
                 new TestMethodMetadata.Theory
                 {
                     MethodName = "AddTest",
-                    TestCases =
-                    [
-                        new TestCaseMetadata { Arguments = [2, 3, 5] }
-                    ],
+                    TestCases = [new TestCaseMetadata { Arguments = [2, 3, 5] }],
                     ParameterizedBody = async (args, ct) =>
                     {
                         executionCount++;
                         await Task.CompletedTask;
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         };
 
         var options = TestExecutionOptions.Default;
@@ -70,15 +67,15 @@ public class ParameterizedTestExecutionTests
                     [
                         new TestCaseMetadata { Arguments = [1, 2, 3] },
                         new TestCaseMetadata { Arguments = [5, 7, 12] },
-                        new TestCaseMetadata { Arguments = [-1, 1, 0] }
+                        new TestCaseMetadata { Arguments = [-1, 1, 0] },
                     ],
                     ParameterizedBody = async (args, ct) =>
                     {
                         executionCount++;
                         await Task.CompletedTask;
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         };
 
         var options = TestExecutionOptions.Default;
@@ -109,16 +106,16 @@ public class ParameterizedTestExecutionTests
                     TestCases =
                     [
                         new TestCaseMetadata { Arguments = [2, 3, 5] },
-                        new TestCaseMetadata { Arguments = [10, 20, 30] }
+                        new TestCaseMetadata { Arguments = [10, 20, 30] },
                     ],
                     ParameterizedBody = async (args, ct) =>
                     {
                         // In the real implementation, the delegate would receive arguments
                         // For now, we just verify execution happens
                         await Task.CompletedTask;
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         };
 
         var options = TestExecutionOptions.Default;
@@ -148,7 +145,7 @@ public class ParameterizedTestExecutionTests
                     [
                         new TestCaseMetadata { Arguments = [1, 2, 3] },
                         new TestCaseMetadata { Arguments = [5, 5, 11] }, // This one will "fail"
-                        new TestCaseMetadata { Arguments = [0, 0, 0] }
+                        new TestCaseMetadata { Arguments = [0, 0, 0] },
                     ],
                     ParameterizedBody = async (args, ct) =>
                     {
@@ -158,9 +155,9 @@ public class ParameterizedTestExecutionTests
                             throw new InvalidOperationException("Test case failed");
                         }
                         await Task.CompletedTask;
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         };
 
         var options = TestExecutionOptions.Default;
@@ -193,16 +190,16 @@ public class ParameterizedTestExecutionTests
                         {
                             Arguments = [5, 5, 10],
                             Skip = true,
-                            SkipReason = "Known issue"
+                            SkipReason = "Known issue",
                         },
-                        new TestCaseMetadata { Arguments = [0, 0, 0] }
+                        new TestCaseMetadata { Arguments = [0, 0, 0] },
                     ],
                     ParameterizedBody = async (args, ct) =>
                     {
                         await Task.CompletedTask;
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         };
 
         var options = TestExecutionOptions.Default;
@@ -233,23 +230,19 @@ public class ParameterizedTestExecutionTests
                     MethodName = "AddTest",
                     TestCases =
                     [
-                        new TestCaseMetadata
-                        {
-                            Arguments = [2, 3, 5],
-                            DisplayName = "2 + 3 = 5"
-                        },
+                        new TestCaseMetadata { Arguments = [2, 3, 5], DisplayName = "2 + 3 = 5" },
                         new TestCaseMetadata
                         {
                             Arguments = [10, 20, 30],
-                            DisplayName = "10 + 20 = 30"
-                        }
+                            DisplayName = "10 + 20 = 30",
+                        },
                     ],
                     ParameterizedBody = async (args, ct) =>
                     {
                         await Task.CompletedTask;
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         };
 
         var options = TestExecutionOptions.Default;
@@ -282,9 +275,9 @@ public class ParameterizedTestExecutionTests
                     {
                         executionCount++;
                         await Task.CompletedTask;
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         };
 
         var options = TestExecutionOptions.Default;

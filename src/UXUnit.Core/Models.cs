@@ -36,25 +36,21 @@ public enum TestStatus
 /// </summary>
 public sealed class TestResult
 {
-    public string TestId { get; init; } = string.Empty;
+    public required string TestId { get; init; }
 
-    public string TestName { get; init; } = string.Empty;
+    public required string TestName { get; init; }
 
     public string? TestDisplayName { get; init; }
 
-    public string ClassName { get; init; } = string.Empty;
+    public required string ClassName { get; init; }
 
     public string? ClassDisplayName { get; init; }
 
-    public string AssemblyName { get; init; } = string.Empty;
+    public required string AssemblyName { get; init; }
 
     public TestStatus Status { get; init; }
 
     public TimeSpan Duration { get; init; }
-
-    public DateTime StartTime { get; init; }
-
-    public DateTime EndTime { get; init; }
 
     public string? ErrorMessage { get; init; }
 
@@ -64,13 +60,14 @@ public sealed class TestResult
 
     public string? SkipReason { get; init; }
 
-    public int AttemptCount { get; init; } = 1;
-
     public IReadOnlyList<string> OutputLines { get; init; } = Array.Empty<string>();
 
     public IReadOnlyDictionary<string, object?> Properties { get; init; } =
         new Dictionary<string, object?>();
 
+    /// <summary>
+    /// Gets the arguments used for parameterized tests.
+    /// </summary>
     public object?[]? TestCaseArguments { get; init; }
 
     /// <summary>
@@ -80,19 +77,17 @@ public sealed class TestResult
         string testId,
         string testName,
         TimeSpan duration,
-        DateTime startTime,
-        DateTime endTime,
-        string? className = null
+        string className,
+        string assemblyName
     ) =>
         new()
         {
             TestId = testId,
             TestName = testName,
-            ClassName = className ?? string.Empty,
+            ClassName = className,
+            AssemblyName = assemblyName,
             Status = TestStatus.Passed,
             Duration = duration,
-            StartTime = startTime,
-            EndTime = endTime,
         };
 
     /// <summary>
@@ -103,19 +98,17 @@ public sealed class TestResult
         string testName,
         Exception exception,
         TimeSpan duration,
-        DateTime startTime,
-        DateTime endTime,
-        string? className = null
+        string className,
+        string assemblyName
     ) =>
         new()
         {
             TestId = testId,
             TestName = testName,
-            ClassName = className ?? string.Empty,
+            ClassName = className,
+            AssemblyName = assemblyName,
             Status = TestStatus.Failed,
             Duration = duration,
-            StartTime = startTime,
-            EndTime = endTime,
             ErrorMessage = exception.Message,
             ErrorType = exception.GetType().FullName,
             StackTrace = exception.StackTrace,
@@ -124,12 +117,19 @@ public sealed class TestResult
     /// <summary>
     /// Creates a skipped test result.
     /// </summary>
-    public static TestResult Skipped(string testId, string testName, string reason, string? className = null) =>
+    public static TestResult Skipped(
+        string testId,
+        string testName,
+        string reason,
+        string className,
+        string assemblyName
+    ) =>
         new()
         {
             TestId = testId,
             TestName = testName,
-            ClassName = className ?? string.Empty,
+            ClassName = className,
+            AssemblyName = assemblyName,
             Status = TestStatus.Skipped,
             SkipReason = reason,
         };
@@ -214,7 +214,8 @@ public abstract class TestMethodMetadata
         /// Gets the test cases for this theory.
         /// Each test case provides arguments for one execution of the test.
         /// </summary>
-        public IReadOnlyList<TestCaseMetadata> TestCases { get; init; } = Array.Empty<TestCaseMetadata>();
+        public IReadOnlyList<TestCaseMetadata> TestCases { get; init; } =
+            Array.Empty<TestCaseMetadata>();
     }
 }
 
@@ -248,21 +249,9 @@ public sealed class TestRunSummary
 
     public int SkippedTests { get; init; }
 
-    public int InconclusiveTests { get; init; }
-
     public TimeSpan TotalDuration { get; init; }
 
     public double PassRate => TotalTests > 0 ? (double)PassedTests / TotalTests : 0.0;
 
-    public bool AllPassed => FailedTests == 0 && InconclusiveTests == 0;
-}
-
-// Helper implementations for null objects
-public sealed class NullTestOutput : ITestOutput
-{
-    public static readonly NullTestOutput Instance = new();
-
-    public void WriteLine(string message) { }
-
-    public void WriteLine(string format, params object[] args) { }
+    public bool AllPassed => FailedTests == 0;
 }

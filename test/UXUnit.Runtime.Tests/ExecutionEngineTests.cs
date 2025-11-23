@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using XunitFactAttribute = Xunit.FactAttribute;
 using XunitAssert = Xunit.Assert;
+using XunitFactAttribute = Xunit.FactAttribute;
 
 namespace UXUnit.Runtime.Tests;
 
@@ -33,17 +33,15 @@ public class ExecutionEngineTests
                         executed = true;
                         await Task.CompletedTask;
                         // No exception = test passes
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         };
 
         var options = TestExecutionOptions.Default;
 
         // Act
-        var results = await TestExecutionEngine.ExecuteTestsAsync(
-            [testMetadata],
-            options);
+        var results = await TestExecutionEngine.ExecuteTestsAsync([testMetadata], options);
 
         // Assert
         XunitAssert.True(executed, "Test delegate should have been executed");
@@ -67,17 +65,15 @@ public class ExecutionEngineTests
                 {
                     MethodName = "SkippedTest",
                     Skip = true,
-                    SkipReason = "Test intentionally skipped for testing"
-                }
-            ]
+                    SkipReason = "Test intentionally skipped for testing",
+                },
+            ],
         };
 
         var options = TestExecutionOptions.Default;
 
         // Act
-        var results = await TestExecutionEngine.ExecuteTestsAsync(
-            [testMetadata],
-            options);
+        var results = await TestExecutionEngine.ExecuteTestsAsync([testMetadata], options);
 
         // Assert
         XunitAssert.Single(results);
@@ -97,16 +93,19 @@ public class ExecutionEngineTests
             [
                 new TestMethodMetadata.Fact { MethodName = "Test1", Skip = false },
                 new TestMethodMetadata.Fact { MethodName = "Test2", Skip = false },
-                new TestMethodMetadata.Fact { MethodName = "Test3", Skip = true, SkipReason = "Skip this one" }
-            ]
+                new TestMethodMetadata.Fact
+                {
+                    MethodName = "Test3",
+                    Skip = true,
+                    SkipReason = "Skip this one",
+                },
+            ],
         };
 
         var options = TestExecutionOptions.Default;
 
         // Act
-        var results = await TestExecutionEngine.ExecuteTestsAsync(
-            [testMetadata],
-            options);
+        var results = await TestExecutionEngine.ExecuteTestsAsync([testMetadata], options);
 
         // Assert
         XunitAssert.Equal(3, results.Length);
@@ -125,19 +124,14 @@ public class ExecutionEngineTests
             [
                 new TestMethodMetadata.Fact { MethodName = "Test1" },
                 new TestMethodMetadata.Fact { MethodName = "Test2" },
-                new TestMethodMetadata.Fact { MethodName = "Test3" }
-            ]
+                new TestMethodMetadata.Fact { MethodName = "Test3" },
+            ],
         };
 
-        var options = new TestExecutionOptions
-        {
-            ParallelExecution = false
-        };
+        var options = new TestExecutionOptions { ParallelExecution = false };
 
         // Act
-        var results = await TestExecutionEngine.ExecuteTestsAsync(
-            [testMetadata],
-            options);
+        var results = await TestExecutionEngine.ExecuteTestsAsync([testMetadata], options);
 
         // Assert
         XunitAssert.Equal(3, results.Length);
@@ -156,20 +150,18 @@ public class ExecutionEngineTests
                 new TestMethodMetadata.Fact { MethodName = "ParallelTest1" },
                 new TestMethodMetadata.Fact { MethodName = "ParallelTest2" },
                 new TestMethodMetadata.Fact { MethodName = "ParallelTest3" },
-                new TestMethodMetadata.Fact { MethodName = "ParallelTest4" }
-            ]
+                new TestMethodMetadata.Fact { MethodName = "ParallelTest4" },
+            ],
         };
 
         var options = new TestExecutionOptions
         {
             ParallelExecution = true,
-            MaxDegreeOfParallelism = 2
+            MaxDegreeOfParallelism = 2,
         };
 
         // Act
-        var results = await TestExecutionEngine.ExecuteTestsAsync(
-            [testMetadata],
-            options);
+        var results = await TestExecutionEngine.ExecuteTestsAsync([testMetadata], options);
 
         // Assert
         XunitAssert.Equal(4, results.Length);
@@ -186,20 +178,18 @@ public class ExecutionEngineTests
             TestMethods =
             [
                 new TestMethodMetadata.Fact { MethodName = "Test1" },
-                new TestMethodMetadata.Fact { MethodName = "Test2" }
-            ]
+                new TestMethodMetadata.Fact { MethodName = "Test2" },
+            ],
         };
 
         var options = new TestExecutionOptions
         {
             ParallelExecution = false,
-            StopOnFirstFailure = true
+            StopOnFirstFailure = true,
         };
 
         // Act
-        var results = await TestExecutionEngine.ExecuteTestsAsync(
-            [testMetadata],
-            options);
+        var results = await TestExecutionEngine.ExecuteTestsAsync([testMetadata], options);
 
         // Assert: All should execute since none fail (placeholder implementation)
         XunitAssert.Equal(2, results.Length);
@@ -217,8 +207,8 @@ public class ExecutionEngineTests
                 TestMethods =
                 [
                     new TestMethodMetadata.Fact { MethodName = "Test1A" },
-                    new TestMethodMetadata.Fact { MethodName = "Test1B" }
-                ]
+                    new TestMethodMetadata.Fact { MethodName = "Test1B" },
+                ],
             },
             new TestClassMetadata
             {
@@ -226,9 +216,9 @@ public class ExecutionEngineTests
                 TestMethods =
                 [
                     new TestMethodMetadata.Fact { MethodName = "Test2A" },
-                    new TestMethodMetadata.Fact { MethodName = "Test2B" }
-                ]
-            }
+                    new TestMethodMetadata.Fact { MethodName = "Test2B" },
+                ],
+            },
         };
 
         var options = TestExecutionOptions.Default;
@@ -249,23 +239,17 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TimingTestClass",
-            TestMethods =
-            [
-                new TestMethodMetadata.Fact { MethodName = "TimedTest" }
-            ]
+            TestMethods = [new TestMethodMetadata.Fact { MethodName = "TimedTest" }],
         };
 
         var options = TestExecutionOptions.Default;
 
         // Act
-        var results = await TestExecutionEngine.ExecuteTestsAsync(
-            [testMetadata],
-            options);
+        var results = await TestExecutionEngine.ExecuteTestsAsync([testMetadata], options);
 
         // Assert
         XunitAssert.Single(results);
         XunitAssert.True(results[0].Duration >= TimeSpan.Zero);
-        XunitAssert.True(results[0].StartTime <= results[0].EndTime);
     }
 
     [XunitFact]
@@ -285,17 +269,15 @@ public class ExecutionEngineTests
                     {
                         await Task.CompletedTask;
                         throw new InvalidOperationException("Test intentionally failed");
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         };
 
         var options = TestExecutionOptions.Default;
 
         // Act
-        var results = await TestExecutionEngine.ExecuteTestsAsync(
-            [testMetadata],
-            options);
+        var results = await TestExecutionEngine.ExecuteTestsAsync([testMetadata], options);
 
         // Assert
         XunitAssert.Single(results);
@@ -324,17 +306,15 @@ public class ExecutionEngineTests
                         await Task.Delay(50, ct); // Simulate async work
                         asyncExecuted = true;
                         // No exception = test passes
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         };
 
         var options = TestExecutionOptions.Default;
 
         // Act
-        var results = await TestExecutionEngine.ExecuteTestsAsync(
-            [testMetadata],
-            options);
+        var results = await TestExecutionEngine.ExecuteTestsAsync([testMetadata], options);
 
         // Assert
         XunitAssert.True(asyncExecuted, "Async test should have executed");

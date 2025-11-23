@@ -70,7 +70,7 @@ public sealed class TestRunSummary
             PassedTests = results.Count(r => r.Status == TestStatus.Passed),
             FailedTests = results.Count(r => r.Status == TestStatus.Failed),
             SkippedTests = results.Count(r => r.Status == TestStatus.Skipped),
-            TotalDuration = TimeSpan.FromTicks(results.Sum(r => r.Duration.Ticks))
+            TotalDuration = TimeSpan.FromTicks(results.Sum(r => r.Duration.Ticks)),
         };
     }
 }
