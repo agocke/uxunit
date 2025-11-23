@@ -132,7 +132,7 @@ public class AssertionExamples
     public void StringAssertions()
     {
         var text = "Hello, World!";
-        
+
         Assert.NotNull(text);
         Assert.Contains("World", text);
         Assert.StartsWith("Hello", text);
@@ -143,7 +143,7 @@ public class AssertionExamples
     public void CollectionAssertions()
     {
         var numbers = new[] { 1, 2, 3, 4, 5 };
-        
+
         Assert.NotEmpty(numbers);
         Assert.Equal(5, numbers.Length);
         Assert.Contains(3, numbers);
@@ -154,7 +154,7 @@ public class AssertionExamples
     public void NumericAssertions()
     {
         var value = 42.0;
-        
+
         Assert.True(value > 40);
         Assert.True(value < 50);
         Assert.InRange(value, 40, 50);
@@ -165,8 +165,8 @@ public class AssertionExamples
     public void ExceptionAssertions()
     {
         var calculator = new Calculator();
-        
-        Assert.Throws<ArgumentException>(() => 
+
+        Assert.Throws<ArgumentException>(() =>
             calculator.Divide(10, 0));
     }
 }
@@ -218,14 +218,14 @@ public void RegisterUser_WithValidData_CreatesUserSuccessfully()
 [Fact]
 public void CalculateDiscount_ForPremiumCustomer_AppliesCorrectRate()
 {
-    // Arrange
+
     var customer = new Customer { IsPremium = true };
     var calculator = new DiscountCalculator();
-    
-    // Act
+
+
     var discount = calculator.Calculate(customer, 100);
-    
-    // Assert
+
+
     Assert.Equal(10, discount);
 }
 ```
@@ -262,9 +262,9 @@ public class ServiceTests : IDisposable
 public async Task ProcessAsync_WithValidInput_CompletesSuccessfully()
 {
     var processor = new AsyncProcessor();
-    
+
     await processor.ProcessAsync("valid-input");
-    
+
     Assert.True(processor.IsCompleted);
 }
 ```
@@ -283,7 +283,7 @@ public class TestClass
 {
     [Fact]
     public void Test1() { }
-    
+
     [Theory]
     [InlineData(1, 2, 3)]
     public void Test2(int a, int b, int expected) { }

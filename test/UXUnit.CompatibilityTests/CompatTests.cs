@@ -39,7 +39,7 @@ public class CompatibilityComparisonTests
         uout = uout.Substring(uout.IndexOf('\n') + 1);
 
         // TODO: Enable when functional
-        // Assert.Equal(xout, uout);
+        //Assert.Equal(xout, uout);
     }
 
     private ProcessResult ExecuteDotNetCommand(string command, string projectPath)

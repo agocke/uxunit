@@ -16,16 +16,13 @@ public class ExecutionEngineTests
     [Fact]
     public async Task TestRunner_WithPassingTest_ShouldReturnPassedResult()
     {
-        // Arrange
         var output = new BufferedTestOutput();
         var runner = new TestRunner(output);
         var testRunners = new ITestClassRunner[] { new PassingTestRunner() };
         var config = new TestRunConfiguration { Output = output };
 
-        // Act
         var result = await runner.RunTestsAsync(testRunners, config);
 
-        // Assert
         Assert.Single(result.TestResults);
         Assert.Equal(TestStatus.Passed, result.TestResults[0].Status);
         Assert.Equal("PassingMethod", result.TestResults[0].TestName);
@@ -37,16 +34,14 @@ public class ExecutionEngineTests
     [Fact]
     public async Task TestRunner_WithFailingTest_ShouldReturnFailedResult()
     {
-        // Arrange
         var output = new BufferedTestOutput();
         var runner = new TestRunner(output);
         var testRunners = new ITestClassRunner[] { new FailingTestRunner() };
         var config = new TestRunConfiguration { Output = output };
 
-        // Act
         var result = await runner.RunTestsAsync(testRunners, config);
 
-        // Assert
+
         Assert.Single(result.TestResults);
         Assert.Equal(TestStatus.Failed, result.TestResults[0].Status);
         Assert.Equal("FailingMethod", result.TestResults[0].TestName);
@@ -60,16 +55,16 @@ public class ExecutionEngineTests
     [Fact]
     public async Task TestRunner_WithSkippedTest_ShouldReturnSkippedResult()
     {
-        // Arrange
+
         var output = new BufferedTestOutput();
         var runner = new TestRunner(output);
         var testRunners = new ITestClassRunner[] { new SkippedTestRunner() };
         var config = new TestRunConfiguration { Output = output };
 
-        // Act
+
         var result = await runner.RunTestsAsync(testRunners, config);
 
-        // Assert
+
         Assert.Single(result.TestResults);
         Assert.Equal(TestStatus.Skipped, result.TestResults[0].Status);
         Assert.Equal("SkippedMethod", result.TestResults[0].TestName);
@@ -83,16 +78,16 @@ public class ExecutionEngineTests
     [Fact]
     public async Task TestRunner_WithAsyncTest_ShouldExecuteCorrectly()
     {
-        // Arrange
+
         var output = new BufferedTestOutput();
         var runner = new TestRunner(output);
         var testRunners = new ITestClassRunner[] { new AsyncTestRunner() };
         var config = new TestRunConfiguration { Output = output };
 
-        // Act
+
         var result = await runner.RunTestsAsync(testRunners, config);
 
-        // Assert
+
         Assert.Single(result.TestResults);
         Assert.Equal(TestStatus.Passed, result.TestResults[0].Status);
         Assert.Equal("AsyncMethod", result.TestResults[0].TestName);
@@ -102,18 +97,18 @@ public class ExecutionEngineTests
     [Fact]
     public async Task TestRunner_WithParameterizedTest_ShouldExecuteAllCases()
     {
-        // Arrange
+
         var output = new BufferedTestOutput();
         var runner = new TestRunner(output);
         var testRunners = new ITestClassRunner[] { new ParameterizedTestRunner() };
         var config = new TestRunConfiguration { Output = output };
 
-        // Act
+
         var result = await runner.RunTestsAsync(testRunners, config);
 
-        // Assert
+
         Assert.Single(result.TestResults); // Parameterized tests return one result (first failure or last success)
-        
+
         // Check that the test case arguments were used
         var testResult = result.TestResults[0];
         Assert.NotNull(testResult.TestCaseArguments);
@@ -123,11 +118,11 @@ public class ExecutionEngineTests
     [Fact]
     public async Task TestRunner_WithMixedResults_ShouldReturnCorrectSummary()
     {
-        // Arrange
+
         var output = new BufferedTestOutput();
         var runner = new TestRunner(output);
-        var testRunners = new ITestClassRunner[] 
-        { 
+        var testRunners = new ITestClassRunner[]
+        {
             new PassingTestRunner(),
             new FailingTestRunner(),
             new SkippedTestRunner(),
@@ -135,10 +130,10 @@ public class ExecutionEngineTests
         };
         var config = new TestRunConfiguration { Output = output };
 
-        // Act
+
         var result = await runner.RunTestsAsync(testRunners, config);
 
-        // Assert
+
         Assert.Equal(4, result.TestResults.Count);
         Assert.Equal(2, result.PassedTests); // PassingTest + AsyncTest
         Assert.Equal(1, result.FailedTests); // FailingTest
@@ -150,26 +145,25 @@ public class ExecutionEngineTests
     [Fact]
     public async Task TestRunner_WithStopOnFirstFailure_ShouldStopAfterFirstFailure()
     {
-        // Arrange
+
         var output = new BufferedTestOutput();
         var runner = new TestRunner(output);
-        var testRunners = new ITestClassRunner[] 
-        { 
+        var testRunners = new ITestClassRunner[]
+        {
             new PassingTestRunner(),
             new FailingTestRunner(),
             new PassingTestRunner() // This shouldn't run
         };
-        var config = new TestRunConfiguration 
-        { 
+        var config = new TestRunConfiguration
+        {
             Output = output,
             StopOnFirstFailure = true,
             ParallelExecution = false // Sequential to ensure order
         };
 
-        // Act
+
         var result = await runner.RunTestsAsync(testRunners, config);
 
-        // Assert - Should have stopped after the failing test
         Assert.True(result.HasFailures);
         var outputText = output.GetOutput();
         Assert.Contains("Stopping execution on first failure", outputText);
@@ -178,17 +172,17 @@ public class ExecutionEngineTests
     [Fact]
     public void TestDiscovery_WithManualRunners_ShouldFindRunners()
     {
-        // Arrange
+
         var runners = new ITestClassRunner[]
         {
             new PassingTestRunner(),
             new FailingTestRunner()
         };
 
-        // Act
+
         var summary = TestDiscovery.GetDiscoverySummary(runners);
 
-        // Assert
+
         Assert.Equal(2, summary.TotalClasses);
         Assert.Equal(2, summary.TotalMethods);
         Assert.Equal(2, summary.TotalTestCases);
@@ -210,9 +204,9 @@ public class PassingTestRunner : TestClassRunnerBase
     {
         return methodName switch
         {
-            "PassingMethod" => (testInstance) => { 
-                ((PassingTestClass)testInstance).PassingMethod(); 
-                return Task.CompletedTask; 
+            "PassingMethod" => (testInstance) => {
+                ((PassingTestClass)testInstance).PassingMethod();
+                return Task.CompletedTask;
             },
             _ => throw new InvalidOperationException($"Unknown test method: {methodName}")
         };
@@ -247,9 +241,9 @@ public class FailingTestRunner : TestClassRunnerBase
     {
         return methodName switch
         {
-            "FailingMethod" => (testInstance) => { 
-                ((FailingTestClass)testInstance).FailingMethod(); 
-                return Task.CompletedTask; 
+            "FailingMethod" => (testInstance) => {
+                ((FailingTestClass)testInstance).FailingMethod();
+                return Task.CompletedTask;
             },
             _ => throw new InvalidOperationException($"Unknown test method: {methodName}")
         };
@@ -274,8 +268,8 @@ public class SkippedTestRunner : TestClassRunnerBase
     public override TestClassMetadata Metadata => new()
     {
         ClassName = "SkippedTestClass",
-        TestMethods = new[] { new TestMethodMetadata 
-        { 
+        TestMethods = new[] { new TestMethodMetadata
+        {
             MethodName = "SkippedMethod",
             Skip = true,
             SkipReason = "Test intentionally skipped"
@@ -287,9 +281,9 @@ public class SkippedTestRunner : TestClassRunnerBase
     {
         return methodName switch
         {
-            "SkippedMethod" => (testInstance) => { 
-                ((SkippedTestClass)testInstance).SkippedMethod(); 
-                return Task.CompletedTask; 
+            "SkippedMethod" => (testInstance) => {
+                ((SkippedTestClass)testInstance).SkippedMethod();
+                return Task.CompletedTask;
             },
             _ => throw new InvalidOperationException($"Unknown test method: {methodName}")
         };
@@ -314,8 +308,8 @@ public class AsyncTestRunner : TestClassRunnerBase
     public override TestClassMetadata Metadata => new()
     {
         ClassName = "AsyncTestClass",
-        TestMethods = new[] { new TestMethodMetadata 
-        { 
+        TestMethods = new[] { new TestMethodMetadata
+        {
             MethodName = "AsyncMethod",
             IsAsync = true
         } }
@@ -358,8 +352,8 @@ public class ParameterizedTestRunner : TestClassRunnerBase
     public override TestClassMetadata Metadata => new()
     {
         ClassName = "ParameterizedTestClass",
-        TestMethods = new[] { new TestMethodMetadata 
-        { 
+        TestMethods = new[] { new TestMethodMetadata
+        {
             MethodName = "ParameterizedMethod",
             TestCases = new[]
             {
@@ -380,9 +374,9 @@ public class ParameterizedTestRunner : TestClassRunnerBase
     {
         return methodName switch
         {
-            "ParameterizedMethod" => (testInstance, arguments) => { 
-                ((ParameterizedTestClass)testInstance).ParameterizedMethod((int)arguments[0]!, (int)arguments[1]!, (int)arguments[2]!); 
-                return Task.CompletedTask; 
+            "ParameterizedMethod" => (testInstance, arguments) => {
+                ((ParameterizedTestClass)testInstance).ParameterizedMethod((int)arguments[0]!, (int)arguments[1]!, (int)arguments[2]!);
+                return Task.CompletedTask;
             },
             _ => throw new InvalidOperationException($"Unknown parameterized test method: {methodName}")
         };
@@ -394,7 +388,7 @@ public class ParameterizedTestClass
     public void ParameterizedMethod(int a, int b, int expected)
     {
         var result = a + b;
-        if (result != expected) 
+        if (result != expected)
             throw new Exception($"Expected {expected}, got {result}");
     }
 }
