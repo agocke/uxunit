@@ -50,29 +50,14 @@ public sealed class TestContext : ITestContext
     )
         : this(string.Empty, className, assemblyName, output, cancellationToken) { }
 
-    /// <summary>
-    /// Gets the name of the current test.
-    /// </summary>
     public string TestName { get; }
 
-    /// <summary>
-    /// Gets the name of the test class.
-    /// </summary>
     public string ClassName { get; }
 
-    /// <summary>
-    /// Gets the name of the test assembly.
-    /// </summary>
     public string AssemblyName { get; }
 
-    /// <summary>
-    /// Gets the cancellation token for the test execution.
-    /// </summary>
     public CancellationToken CancellationToken { get; }
 
-    /// <summary>
-    /// Gets the test output writer.
-    /// </summary>
     public ITestOutput Output { get; }
 
     /// <summary>
