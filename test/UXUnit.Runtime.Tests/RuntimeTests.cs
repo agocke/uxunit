@@ -13,10 +13,9 @@ public class BasicRuntimeTests
     [Fact]
     public void SimpleTest_ShouldPass()
     {
-        // Arrange
+
         var value = 2 + 2;
 
-        // Act & Assert
         Assert.Equal(4, value);
     }
 
@@ -34,13 +33,13 @@ public class BasicRuntimeTests
     [Fact]
     public async Task AsyncTest_ShouldPass()
     {
-        // Arrange
+
         await Task.Delay(10);
 
-        // Act
+
         var result = await GetValueAsync();
 
-        // Assert
+
         Assert.Equal("test", result);
     }
 
@@ -81,10 +80,10 @@ public class ParameterizedTests
     [InlineData(0, 0, 0)]
     public void Add_VariousInputs_ReturnsExpectedSum(int a, int b, int expected)
     {
-        // Act
+
         var result = a + b;
 
-        // Assert
+
         Assert.Equal(expected, result);
     }
 
@@ -94,10 +93,10 @@ public class ParameterizedTests
     [InlineData("", 0)]
     public void StringLength_VariousInputs_ReturnsExpectedLength(string input, int expectedLength)
     {
-        // Act
+
         var result = input.Length;
 
-        // Assert
+
         Assert.Equal(expectedLength, result);
     }
 
@@ -106,7 +105,6 @@ public class ParameterizedTests
     [InlineData(false)]
     public void BooleanTest_WithDisplayNames_ShouldPass(bool value)
     {
-        // Act & Assert
         Assert.True(value || !value); // Always true
     }
 }
