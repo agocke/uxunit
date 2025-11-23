@@ -235,13 +235,19 @@ public sealed class TestClassMetadata
 
 /// <summary>
 /// Represents metadata for a test method.
+/// Use nested Fact or Theory types to create instances.
 /// </summary>
-public sealed class TestMethodMetadata
+public abstract class TestMethodMetadata
 {
+    /// <summary>
+    /// Private constructor - use Fact or Theory nested types.
+    /// </summary>
+    private TestMethodMetadata() { }
+
     /// <summary>
     /// Gets the method name.
     /// </summary>
-    public string MethodName { get; init; } = string.Empty;
+    public required string MethodName { get; init; }
 
     /// <summary>
     /// Gets the display name for the method.
@@ -269,12 +275,6 @@ public sealed class TestMethodMetadata
     public int TimeoutMs { get; init; } = 0;
 
     /// <summary>
-    /// Gets the test cases for this method (for parameterized tests).
-    /// </summary>
-    public IReadOnlyList<TestCaseMetadata> TestCases { get; init; } =
-        Array.Empty<TestCaseMetadata>();
-
-    /// <summary>
     /// Gets whether this is an async method.
     /// </summary>
     public bool IsAsync { get; init; }
@@ -285,18 +285,40 @@ public sealed class TestMethodMetadata
     public bool IsStatic { get; init; }
 
     /// <summary>
-    /// Gets or sets the execution delegate for this test method.
-    /// When provided, this delegate will be invoked to execute the test.
-    /// The delegate should contain the actual test code. The engine will capture
-    /// the result (success if no exception, failure if exception thrown).
-    /// </summary>
-    public Func<CancellationToken, Task>? ExecuteAsync { get; init; }
-
-    /// <summary>
     /// Gets additional properties for the test method.
     /// </summary>
     public IReadOnlyDictionary<string, object?> Properties { get; init; } =
         new Dictionary<string, object?>();
+
+    /// <summary>
+    /// Represents a Fact test - a non-parameterized test method.
+    /// </summary>
+    public sealed class Fact : TestMethodMetadata
+    {
+        /// <summary>
+        /// Gets the test body delegate for this fact.
+        /// The delegate contains the actual test code.
+        /// </summary>
+        public Func<CancellationToken, Task>? Body { get; init; }
+    }
+
+    /// <summary>
+    /// Represents a Theory test - a parameterized test method executed multiple times with different arguments.
+    /// </summary>
+    public sealed class Theory : TestMethodMetadata
+    {
+        /// <summary>
+        /// Gets the test body delegate for this theory.
+        /// The delegate accepts arguments and contains the actual test code.
+        /// </summary>
+        public Func<object?[], CancellationToken, Task>? ParameterizedBody { get; init; }
+
+        /// <summary>
+        /// Gets the test cases for this theory.
+        /// Each test case provides arguments for one execution of the test.
+        /// </summary>
+        public IReadOnlyList<TestCaseMetadata> TestCases { get; init; } = Array.Empty<TestCaseMetadata>();
+    }
 }
 
 /// <summary>
