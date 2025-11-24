@@ -17,6 +17,7 @@ namespace UXUnit.Generated
             new TestClassMetadata
             {
                 ClassName = "TestClass2",
+                AssemblyName = "GeneratesSeparateFilesForDifferentClasses",
                 TestMethods = new TestMethodMetadata[]
                 {
                     new TestMethodMetadata.Fact

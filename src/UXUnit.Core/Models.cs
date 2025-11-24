@@ -24,11 +24,6 @@ public enum TestStatus
     /// The test was skipped.
     /// </summary>
     Skipped,
-
-    /// <summary>
-    /// The test result is inconclusive.
-    /// </summary>
-    Inconclusive,
 }
 
 /// <summary>

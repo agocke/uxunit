@@ -9,14 +9,14 @@ namespace UXUnit.Generators.Tests;
 
 public static class TestHelpers
 {
-    public static async Task<CSharpCompilation> CreateCompilation(string src, MetadataReference[]? additionalRefs = null)
+    public static async Task<CSharpCompilation> CreateCompilation(string src, MetadataReference[]? additionalRefs = null, string? assemblyName = null)
     {
         additionalRefs ??= Array.Empty<MetadataReference>();
         IEnumerable<MetadataReference> refs = await Config.Net10Ref.ResolveAsync(null, default);
         refs = refs.Concat(additionalRefs);
         refs = refs.Append(MetadataReference.CreateFromFile(typeof(UXUnit.TestStatus).Assembly.Location));
         return CSharpCompilation.Create(
-            Guid.NewGuid().ToString(),
+            assemblyName ?? "TestAssembly",
             new[] { CSharpSyntaxTree.ParseText(src) },
             references: refs,
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)

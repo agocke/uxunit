@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft;
 using VerifyXunit;
@@ -119,9 +120,9 @@ public class TestClass2
         return VerifyGenerator(source);
     }
 
-    private static async Task VerifyGenerator(string source)
+    private static async Task VerifyGenerator(string source, [CallerMemberName] string? testName = null)
     {
-        var compilation = await TestHelpers.CreateCompilation(source);
+        var compilation = await TestHelpers.CreateCompilation(source, assemblyName: testName);
 
         // Check for compilation errors
         var diagnostics = compilation.GetDiagnostics();
@@ -149,8 +150,23 @@ public class TestClass2
             System.Console.WriteLine($"  - {tree.FilePath}");
         }
 
+        // Compile the generated code to check for compilation errors
+        var generatedCompilation = compilation.AddSyntaxTrees(result.GeneratedTrees);
+        var compilationDiagnostics = generatedCompilation.GetDiagnostics();
+        var compilationErrors = compilationDiagnostics
+            .Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
+            .ToList();
+
+        if (compilationErrors.Any())
+        {
+            foreach (var error in compilationErrors)
+            {
+                System.Console.WriteLine($"Generated Code Compilation Error: {error}");
+            }
+            throw new System.Exception($"Generated code has {compilationErrors.Count} compilation error(s)");
+        }
+
         await Verifier.Verify(driver)
-            .UseDirectory("Snapshots")
-            .ScrubLinesContaining("AssemblyName");  // Scrub assembly GUID from snapshots
+            .UseDirectory("Snapshots");
     }
 }

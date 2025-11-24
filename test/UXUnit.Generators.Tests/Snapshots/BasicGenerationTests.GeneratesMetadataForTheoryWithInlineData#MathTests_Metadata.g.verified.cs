@@ -17,6 +17,7 @@ namespace UXUnit.Generated
             new TestClassMetadata
             {
                 ClassName = "MathTests",
+                AssemblyName = "GeneratesMetadataForTheoryWithInlineData",
                 TestMethods = new TestMethodMetadata[]
                 {
                     new TestMethodMetadata.Theory

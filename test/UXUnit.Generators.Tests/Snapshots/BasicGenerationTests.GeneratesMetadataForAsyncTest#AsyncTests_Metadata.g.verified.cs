@@ -17,6 +17,7 @@ namespace UXUnit.Generated
             new TestClassMetadata
             {
                 ClassName = "AsyncTests",
+                AssemblyName = "GeneratesMetadataForAsyncTest",
                 TestMethods = new TestMethodMetadata[]
                 {
                     new TestMethodMetadata.Fact

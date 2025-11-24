@@ -17,6 +17,7 @@ namespace UXUnit.Generated
             new TestClassMetadata
             {
                 ClassName = "MixedTests",
+                AssemblyName = "GeneratesMetadataForMultipleTestMethods",
                 TestMethods = new TestMethodMetadata[]
                 {
                     new TestMethodMetadata.Fact

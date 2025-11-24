@@ -17,6 +17,7 @@ namespace UXUnit.Generated
             new TestClassMetadata
             {
                 ClassName = "SimpleTests",
+                AssemblyName = "GeneratesMetadataForSimpleFact",
                 TestMethods = new TestMethodMetadata[]
                 {
                     new TestMethodMetadata.Fact
