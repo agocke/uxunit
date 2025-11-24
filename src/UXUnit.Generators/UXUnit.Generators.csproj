@@ -20,5 +20,11 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+    <PackageReference Include="StaticCS.IndentingBuilder" PrivateAssets="all" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Include IndentingBuilder DLL in the analyzer -->
+    <None Include="$(PKGStaticCS_IndentingBuilder)/lib/netstandard2.0/IndentingBuilder.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
 </Project>

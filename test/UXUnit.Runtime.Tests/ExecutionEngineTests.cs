@@ -21,6 +21,7 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "SimpleTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Fact
@@ -59,6 +60,7 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "SkippedTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Fact
@@ -89,6 +91,7 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "MultiTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Fact { MethodName = "Test1", Skip = false },
@@ -120,6 +123,7 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "SequentialTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Fact { MethodName = "Test1" },
@@ -145,6 +149,7 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "ParallelTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Fact { MethodName = "ParallelTest1" },
@@ -175,6 +180,7 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "StopOnFailureTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Fact { MethodName = "Test1" },
@@ -204,6 +210,7 @@ public class ExecutionEngineTests
             new TestClassMetadata
             {
                 ClassName = "TestClass1",
+            AssemblyName = "TestAssembly",
                 TestMethods =
                 [
                     new TestMethodMetadata.Fact { MethodName = "Test1A" },
@@ -213,6 +220,7 @@ public class ExecutionEngineTests
             new TestClassMetadata
             {
                 ClassName = "TestClass2",
+            AssemblyName = "TestAssembly",
                 TestMethods =
                 [
                     new TestMethodMetadata.Fact { MethodName = "Test2A" },
@@ -239,6 +247,7 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TimingTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods = [new TestMethodMetadata.Fact { MethodName = "TimedTest" }],
         };
 
@@ -259,6 +268,7 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "FailingTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Fact
@@ -295,6 +305,7 @@ public class ExecutionEngineTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "AsyncTestClass",
+            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Fact

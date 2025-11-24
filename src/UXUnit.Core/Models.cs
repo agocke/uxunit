@@ -24,11 +24,6 @@ public enum TestStatus
     /// The test was skipped.
     /// </summary>
     Skipped,
-
-    /// <summary>
-    /// The test result is inconclusive.
-    /// </summary>
-    Inconclusive,
 }
 
 /// <summary>
@@ -61,9 +56,6 @@ public sealed class TestResult
     public string? SkipReason { get; init; }
 
     public IReadOnlyList<string> OutputLines { get; init; } = Array.Empty<string>();
-
-    public IReadOnlyDictionary<string, object?> Properties { get; init; } =
-        new Dictionary<string, object?>();
 
     /// <summary>
     /// Gets the arguments used for parameterized tests.
@@ -142,6 +134,8 @@ public sealed class TestClassMetadata
 {
     public required string ClassName { get; init; }
 
+    public required string AssemblyName { get; init; }
+
     public string? DisplayName { get; init; }
 
     public string? Category { get; init; }
@@ -152,9 +146,6 @@ public sealed class TestClassMetadata
 
     public IReadOnlyList<TestMethodMetadata> TestMethods { get; init; } =
         Array.Empty<TestMethodMetadata>();
-
-    public IReadOnlyDictionary<string, object?> Properties { get; init; } =
-        new Dictionary<string, object?>();
 }
 
 /// <summary>
@@ -183,9 +174,6 @@ public abstract class TestMethodMetadata
     public bool IsAsync { get; init; }
 
     public bool IsStatic { get; init; }
-
-    public IReadOnlyDictionary<string, object?> Properties { get; init; } =
-        new Dictionary<string, object?>();
 
     /// <summary>
     /// Represents a Fact test - a non-parameterized test method.
@@ -231,9 +219,6 @@ public sealed class TestCaseMetadata
     public bool Skip { get; init; }
 
     public string? SkipReason { get; init; }
-
-    public IReadOnlyDictionary<string, object?> Properties { get; init; } =
-        new Dictionary<string, object?>();
 }
 
 /// <summary>

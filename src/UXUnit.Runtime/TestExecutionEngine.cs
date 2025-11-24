@@ -59,12 +59,7 @@ public static class TestExecutionEngine
                                 TestCase = null,
                                 TestCaseIndex = -1,
                                 ClassName = testClass.ClassName,
-                                AssemblyName = testClass.Properties.TryGetValue(
-                                    "AssemblyName",
-                                    out var asm1
-                                )
-                                    ? asm1?.ToString() ?? "Unknown"
-                                    : "Unknown",
+                                AssemblyName = testClass.AssemblyName,
                             }
                         );
                         break;
@@ -81,12 +76,7 @@ public static class TestExecutionEngine
                                     TestCase = testCase,
                                     TestCaseIndex = i,
                                     ClassName = testClass.ClassName,
-                                    AssemblyName = testClass.Properties.TryGetValue(
-                                        "AssemblyName",
-                                        out var asm2
-                                    )
-                                        ? asm2?.ToString() ?? "Unknown"
-                                        : "Unknown",
+                                    AssemblyName = testClass.AssemblyName,
                                 }
                             );
                         }
