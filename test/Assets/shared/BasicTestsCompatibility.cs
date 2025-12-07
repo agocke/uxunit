@@ -1,4 +1,7 @@
-using Xunit; // Always use XUnit assertions
+#if UXUNIT
+using UXUnit;
+#endif
+using Xunit;
 
 namespace UXUnit.Compatibility.Tests;
 
@@ -42,6 +45,13 @@ public class BasicTestsCompatibility : IDisposable
         Action throwAction = () => throw new ArgumentException("Test exception");
         var ex = Assert.Throws<ArgumentException>(throwAction);
         Assert.NotNull(ex);
+    }
+
+    [Fact]
+    public void FailingTest_ShouldFail()
+    {
+        // This test is intentionally designed to fail
+        Assert.Equal(1, 2);
     }
 
     // Parameterized tests - these require different approaches

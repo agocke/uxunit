@@ -37,6 +37,9 @@ public sealed class TestResult
 
     public string? TestDisplayName { get; init; }
 
+    /// <summary>
+    /// Fully qualified name of the test class.
+    /// </summary>
     public required string ClassName { get; init; }
 
     public string? ClassDisplayName { get; init; }
