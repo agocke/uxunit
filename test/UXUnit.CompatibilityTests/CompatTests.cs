@@ -4,10 +4,10 @@ using Xunit;
 
 namespace UXUnit.CompatibilityTests;
 
-public class CompatibilityComparisonTests
+public class CompatibilityComparisonTests(ITestOutputHelper output)
 {
     [Fact]
-    public void CompareOutputs(ITestOutputHelper output)
+    public void CompareOutputs()
     {
         var xbin = Path.Combine(
             AppContext.BaseDirectory,
