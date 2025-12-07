@@ -7,7 +7,7 @@ namespace UXUnit.CompatibilityTests;
 public class CompatibilityComparisonTests
 {
     [Fact]
-    public void CompareOutputs()
+    public void CompareOutputs(ITestOutputHelper output)
     {
         var xbin = Path.Combine(
             AppContext.BaseDirectory,
@@ -47,6 +47,11 @@ public class CompatibilityComparisonTests
         var uresult = Process.Start(uPsi)!;
         uresult.WaitForExit();
         var uout = uresult.StandardOutput.ReadToEnd();
+
+        output.WriteLine("XUnit Output:");
+        output.WriteLine(xout);
+        output.WriteLine("UXUnit Output:");
+        output.WriteLine(uout);
 
         // Normalize outputs for comparison
         var xoutNormalized = NormalizeOutput(xout);
