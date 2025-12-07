@@ -55,6 +55,7 @@ public static class TestRunner
                 {
                     Console.WriteLine(result.StackTrace);
                 }
+                Console.WriteLine();
             }
         }
 

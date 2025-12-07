@@ -89,7 +89,7 @@ public class CompatibilityComparisonTests(ITestOutputHelper output)
                 line.StartsWith("Failed ", StringComparison.OrdinalIgnoreCase))
             {
                 inFailureDetails = true;
-                // Normalize: extract test method name (last part after dots, before any parentheses)
+                // Normalize: extract full test name, removing timing info
                 var testInfo = line.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
                 if (testInfo.Length >= 2)
                 {
@@ -100,10 +100,7 @@ public class CompatibilityComparisonTests(ITestOutputHelper output)
                     {
                         fullTestName = fullTestName.Substring(0, parenIndex).Trim();
                     }
-                    // Extract just the method name (last part after .)
-                    var lastDot = fullTestName.LastIndexOf('.');
-                    var methodName = lastDot >= 0 ? fullTestName.Substring(lastDot + 1) : fullTestName;
-                    normalizedLines.Add($"Failed {methodName}");
+                    normalizedLines.Add($"Failed {fullTestName}");
                     continue;
                 }
             }
@@ -111,8 +108,6 @@ public class CompatibilityComparisonTests(ITestOutputHelper output)
             // Skip stack trace lines (start with "at " or contain file paths)
             if (inFailureDetails && (line.TrimStart().StartsWith("at ") ||
                                       line.Contains(".cs:line") ||
-                                      line.Contains("/_/") ||
-                                      line.Contains("/Users/") ||
                                       line.Contains("End of stack trace")))
             {
                 continue;

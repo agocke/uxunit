@@ -166,7 +166,7 @@ public sealed class TestGenerator : IIncrementalGenerator
         IndentingBuilder builder,
         TestClassWithMethods testClass)
     {
-        var className = testClass.TestClass.Name;
+        var className = testClass.TestClass.ToDisplayString();
 
         builder.AppendLine("return ");
         builder.AppendLine("new TestClassMetadata");
