@@ -32,6 +32,7 @@ public class CompatibilityComparisonTests(ITestOutputHelper output)
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
+            Arguments = "--no-ansi"
         };
         var xresult = Process.Start(xPsi)!;
         xresult.WaitForExit();
