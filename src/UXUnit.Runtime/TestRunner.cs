@@ -49,7 +49,7 @@ public static class TestRunner
             // Print failures
             if (result.Status == TestStatus.Failed && result.ErrorMessage != null)
             {
-                Console.WriteLine($"Failed {result.ClassName}.{result.TestName}");
+                Console.WriteLine($"failed {result.ClassName}.{result.TestName}");
                 Console.WriteLine($"  {result.ErrorMessage}");
                 if (!string.IsNullOrEmpty(result.StackTrace))
                 {

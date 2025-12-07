@@ -85,8 +85,7 @@ public class CompatibilityComparisonTests(ITestOutputHelper output)
                 continue;
 
             // Detect start of failure details
-            if (line.StartsWith("failed ", StringComparison.OrdinalIgnoreCase) ||
-                line.StartsWith("Failed ", StringComparison.OrdinalIgnoreCase))
+            if (line.StartsWith("failed ", StringComparison.Ordinal))
             {
                 inFailureDetails = true;
                 // Normalize: extract full test name, removing timing info
@@ -100,7 +99,7 @@ public class CompatibilityComparisonTests(ITestOutputHelper output)
                     {
                         fullTestName = fullTestName.Substring(0, parenIndex).Trim();
                     }
-                    normalizedLines.Add($"Failed {fullTestName}");
+                    normalizedLines.Add($"failed {fullTestName}");
                     continue;
                 }
             }
