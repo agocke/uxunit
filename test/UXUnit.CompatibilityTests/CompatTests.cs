@@ -36,8 +36,6 @@ public class CompatibilityComparisonTests
         var xresult = Process.Start(xPsi)!;
         xresult.WaitForExit();
         var xout = xresult.StandardOutput.ReadToEnd();
-        // Trim the first line which contains the xunit header
-        xout = xout.Substring(xout.IndexOf('\n') + 1);
 
         var uPsi = new ProcessStartInfo
         {
@@ -49,54 +47,132 @@ public class CompatibilityComparisonTests
         var uresult = Process.Start(uPsi)!;
         uresult.WaitForExit();
         var uout = uresult.StandardOutput.ReadToEnd();
-        // Also trim the first line of uxunit which contains the uxunit header
-        uout = uout.Substring(uout.IndexOf('\n') + 1);
 
-        // TODO: Enable when functional
-        //Assert.Equal(xout, uout);
+        // Normalize outputs for comparison
+        var xoutNormalized = NormalizeOutput(xout);
+        var uoutNormalized = NormalizeOutput(uout);
+
+        Assert.Equal(xoutNormalized, uoutNormalized);
     }
 
-    private ProcessResult ExecuteDotNetCommand(string command, string projectPath)
+    private static string NormalizeOutput(string output)
     {
-        var process = new Process
+        // Split into lines
+        var lines = output.Split('\n', StringSplitOptions.None);
+        var normalizedLines = new List<string>();
+        var headerSkipped = false;
+        var inFailureDetails = false;
+
+        foreach (var line in lines)
         {
-            StartInfo = new ProcessStartInfo
+            // Skip the first header line (contains version/runner info)
+            if (!headerSkipped && (line.Contains("runner", StringComparison.OrdinalIgnoreCase) ||
+                                   line.Contains("xUnit.net", StringComparison.OrdinalIgnoreCase) ||
+                                   line.Contains("Testing.Platform", StringComparison.OrdinalIgnoreCase)))
             {
-                FileName = "dotnet",
-                Arguments = $"{command} \"{projectPath}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            },
-        };
+                headerSkipped = true;
+                continue;
+            }
 
-        var output = new StringBuilder();
-        var error = new StringBuilder();
+            // Skip empty lines immediately after header until we see content
+            if (headerSkipped && string.IsNullOrWhiteSpace(line) && normalizedLines.Count == 0)
+                continue;
 
-        process.OutputDataReceived += (sender, e) =>
+            // Detect start of failure details
+            if (line.StartsWith("failed ", StringComparison.OrdinalIgnoreCase) ||
+                line.StartsWith("Failed ", StringComparison.OrdinalIgnoreCase))
+            {
+                inFailureDetails = true;
+                // Normalize: extract test method name (last part after dots, before any parentheses)
+                var testInfo = line.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                if (testInfo.Length >= 2)
+                {
+                    var fullTestName = testInfo[1];
+                    // Remove timing info like "(0ms)" if present
+                    var parenIndex = fullTestName.IndexOf('(');
+                    if (parenIndex > 0)
+                    {
+                        fullTestName = fullTestName.Substring(0, parenIndex).Trim();
+                    }
+                    // Extract just the method name (last part after .)
+                    var lastDot = fullTestName.LastIndexOf('.');
+                    var methodName = lastDot >= 0 ? fullTestName.Substring(lastDot + 1) : fullTestName;
+                    normalizedLines.Add($"Failed {methodName}");
+                    continue;
+                }
+            }
+
+            // Skip stack trace lines (start with "at " or contain file paths)
+            if (inFailureDetails && (line.TrimStart().StartsWith("at ") ||
+                                      line.Contains(".cs:line") ||
+                                      line.Contains("/_/") ||
+                                      line.Contains("/Users/") ||
+                                      line.Contains("End of stack trace")))
+            {
+                continue;
+            }
+
+            // End of failure details when we hit summary
+            if (line.Contains("Test run summary:", StringComparison.OrdinalIgnoreCase))
+            {
+                inFailureDetails = false;
+            }
+
+            // Normalize the "Test run summary" line - remove path and platform info
+            if (line.Contains("Test run summary:", StringComparison.OrdinalIgnoreCase))
+            {
+                // Extract just the status (Passed! or Failed!)
+                var statusStart = line.IndexOf("Test run summary:", StringComparison.OrdinalIgnoreCase);
+                if (statusStart >= 0)
+                {
+                    var afterSummary = line.Substring(statusStart + "Test run summary:".Length).Trim();
+                    var status = afterSummary.Split(' ')[0]; // Get "Passed!" or "Failed!"
+                    normalizedLines.Add($"Test run summary: {status}");
+                    continue;
+                }
+            }
+
+            // Normalize duration line - replace actual duration with placeholder
+            if (line.Contains("duration:", StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedLines.Add("  duration: XXXms");
+                continue;
+            }
+
+            // Normalize assertion failure lines (Expected/Actual) - remove extra indentation
+            var trimmedLine = line.TrimStart();
+            if (trimmedLine.StartsWith("Expected:", StringComparison.OrdinalIgnoreCase))
+            {
+                var value = trimmedLine.Substring("Expected:".Length).Trim();
+                normalizedLines.Add($"Expected: {value}");
+                continue;
+            }
+            if (trimmedLine.StartsWith("Actual:", StringComparison.OrdinalIgnoreCase))
+            {
+                var value = trimmedLine.Substring("Actual:".Length).Trim();
+                normalizedLines.Add($"Actual: {value}");
+                continue;
+            }
+
+            // Keep all other lines as-is
+            normalizedLines.Add(line);
+        }
+
+        var result = string.Join('\n', normalizedLines);
+
+        // Trim leading and trailing whitespace/newlines
+        result = result.Trim();
+
+        // Remove blank lines immediately before summary totals
+        result = result.Replace("\n\n  total:", "\n  total:");
+
+        // Remove consecutive blank lines
+        while (result.Contains("\n\n\n"))
         {
-            if (e.Data != null)
-                output.AppendLine(e.Data);
-        };
+            result = result.Replace("\n\n\n", "\n\n");
+        }
 
-        process.ErrorDataReceived += (sender, e) =>
-        {
-            if (e.Data != null)
-                error.AppendLine(e.Data);
-        };
-
-        process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-        process.WaitForExit();
-
-        return new ProcessResult
-        {
-            ExitCode = process.ExitCode,
-            Output = output.ToString(),
-            Error = error.ToString(),
-        };
+        return result;
     }
 
     private record ProcessResult

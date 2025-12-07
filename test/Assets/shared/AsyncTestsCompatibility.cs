@@ -1,3 +1,6 @@
+#if UXUNIT
+using UXUnit;
+#endif
 using Xunit;
 
 namespace UXUnit.Compatibility.Tests;
