@@ -13,9 +13,14 @@
     <PackageProjectUrl>https://github.com/uxunit/uxunit</PackageProjectUrl>
     <RepositoryUrl>https://github.com/uxunit/uxunit</RepositoryUrl>
     <PackageTags>testing;unit-testing;dotnet</PackageTags>
+    <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="../UXUnit.Core/UXUnit.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Testing.Platform" />
   </ItemGroup>
 </Project>
