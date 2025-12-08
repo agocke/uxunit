@@ -65,12 +65,9 @@ public class BasicTestsCompatibility : IDisposable
         Assert.Equal(expected, result);
     }
 
-    // Setup/Teardown methods have different names
     public BasicTestsCompatibility()
     {
         // Setup logic here
-        // In XUnit, constructor serves as setup
-        // In UXUnit, we use [Setup] attribute
     }
 
     public void Dispose()
