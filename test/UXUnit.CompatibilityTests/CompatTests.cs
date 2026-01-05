@@ -32,11 +32,20 @@ public class CompatibilityComparisonTests(ITestOutputHelper output)
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
-            Arguments = "--no-ansi"
+            ArgumentList = { "--no-ansi", "--report-xunit-trx", "--report-xunit-trx-filename", "uxunit.trx" },
         };
+        // Clear everything except DOTNET_ROOT
+        var dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+        xPsi.Environment.Clear();
+        if (dotnetRoot != null)
+        {
+            xPsi.Environment["DOTNET_ROOT"] = dotnetRoot;
+        }
+
         var xresult = Process.Start(xPsi)!;
         xresult.WaitForExit();
         var xout = xresult.StandardOutput.ReadToEnd();
+        var xerr = xresult.StandardError.ReadToEnd();
 
         var uPsi = new ProcessStartInfo
         {
@@ -44,19 +53,33 @@ public class CompatibilityComparisonTests(ITestOutputHelper output)
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
+            ArgumentList = { "--no-ansi", "--report-trx", "--report-trx-filename", "uxunit.trx" },
         };
+        uPsi.Environment.Clear();
+        if (dotnetRoot != null)
+        {
+            uPsi.Environment["DOTNET_ROOT"] = dotnetRoot;
+        }
+
         var uresult = Process.Start(uPsi)!;
         uresult.WaitForExit();
         var uout = uresult.StandardOutput.ReadToEnd();
+        var uerr = uresult.StandardError.ReadToEnd();
 
         output.WriteLine("XUnit Output:");
         output.WriteLine(xout);
         output.WriteLine("UXUnit Output:");
         output.WriteLine(uout);
+        output.WriteLine("XUnit Error:");
+        output.WriteLine(xerr);
+        output.WriteLine("UXUnit Error:");
+        output.WriteLine(uerr);
 
         // Normalize outputs for comparison
         var xoutNormalized = NormalizeOutput(xout);
         var uoutNormalized = NormalizeOutput(uout);
+
+        Assert.Equal(xerr, uerr);
 
         Assert.Equal(xoutNormalized, uoutNormalized);
     }

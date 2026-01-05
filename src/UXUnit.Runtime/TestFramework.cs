@@ -1,7 +1,12 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Testing.Extensions;
+using Microsoft.Testing.Extensions.TrxReport.Abstractions;
+using Microsoft.Testing.Platform.Builder;
+using Microsoft.Testing.Platform.Capabilities.TestFramework;
 using Microsoft.Testing.Platform.Extensions.TestFramework;
+using Microsoft.Testing.Platform.Requests;
 
 namespace UXUnit.Runtime;
 
@@ -19,6 +24,16 @@ public sealed class TestFramework : ITestFramework
 
     private TestFramework() { }
 
+    private sealed class TrxReportCapability : ITrxReportCapability
+    {
+        public bool IsSupported => true;
+
+        public void Enable()
+        {
+            // No state to manage for this simple implementation
+        }
+    }
+
     public static async Task<int> RunAsync(
         string[] args,
         TestClassMetadata[] testClasses,
@@ -26,22 +41,44 @@ public sealed class TestFramework : ITestFramework
         CancellationToken cancellationToken = default
     )
     {
-        return await TestRunner.RunAsync(testClasses, options, cancellationToken);
+        var builder = await TestApplication.CreateBuilderAsync(args);
+        builder.AddTrxReportProvider();
+        builder.RegisterTestFramework(
+            serviceProvider => new TestFrameworkCapabilities(new TrxReportCapability()),
+            (capabilities, serviceProvider) =>
+            {
+                return new TestFramework();
+            }
+        );
+
+        var app = await builder.BuildAsync();
+        return await app.RunAsync();
+        //return await TestRunner.RunAsync(testClasses, options, cancellationToken);
     }
 
-    public Task<CloseTestSessionResult> CloseTestSessionAsync(CloseTestSessionContext context)
+    public async Task<CloseTestSessionResult> CloseTestSessionAsync(CloseTestSessionContext context)
     {
-        throw new System.NotImplementedException();
+        // No special teardown needed for UXUnit
+        return new CloseTestSessionResult() { IsSuccess = true };
     }
 
-    public Task<CreateTestSessionResult> CreateTestSessionAsync(CreateTestSessionContext context)
+    public async Task<CreateTestSessionResult> CreateTestSessionAsync(CreateTestSessionContext context)
     {
-        throw new System.NotImplementedException();
+        // No special setup needed for UXUnit
+        return new CreateTestSessionResult() { IsSuccess = true };
     }
 
-    public Task ExecuteRequestAsync(ExecuteRequestContext context)
+    public async Task ExecuteRequestAsync(ExecuteRequestContext context)
     {
-        throw new System.NotImplementedException();
+        if (context.Request is DiscoverTestExecutionRequest)
+        {
+            throw new System.NotImplementedException();
+        }
+        else if (context.Request is RunTestExecutionRequest)
+        {
+            // Filters are not supported yet
+            context.Complete();
+        }
     }
 
     public Task<bool> IsEnabledAsync()
