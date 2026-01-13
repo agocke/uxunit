@@ -1,13 +1,62 @@
 using System.Diagnostics;
-using System.Text;
+using System.Text.RegularExpressions;
+using System.Xml.Serialization;
+using Serde;
+using StaticCs.Collections;
 using Xunit;
 
 namespace UXUnit.CompatibilityTests;
 
+// TRX XML schema records for deserialization
+[XmlRoot("TestRun", Namespace = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010")]
+[GenerateDeserialize]
+[SerdeTypeOptions(MemberFormat = MemberFormat.None)]
+public partial record TrxTestRun
+{
+    [XmlArray("Results")]
+    [XmlArrayItem("UnitTestResult")]
+    public List<TrxUnitTestResult> Results { get; init; } = [];
+}
+
+[GenerateDeserialize]
+public partial record TrxUnitTestResult
+{
+    [XmlAttribute("testName")]
+    public string TestName { get; init; } = "";
+
+    [XmlAttribute("outcome")]
+    public string Outcome { get; init; } = "";
+
+    [XmlElement("Output")]
+    public TrxOutput? Output { get; init; }
+}
+
+[GenerateDeserialize]
+public partial record TrxOutput
+{
+    [XmlElement("ErrorInfo")]
+    public TrxErrorInfo? ErrorInfo { get; init; }
+}
+
+[GenerateDeserialize]
+public partial record TrxErrorInfo
+{
+    [XmlElement("Message")]
+    public string? Message { get; init; }
+}
+
+// Normalized records for comparison (without variable data like timing, paths, etc.)
+public record NormalizedTestRun(EqArray<NormalizedTestResult> Results);
+
+public record NormalizedTestResult(string TestName, string Outcome, string? ErrorMessage) : IComparable<NormalizedTestResult>
+{
+    public int CompareTo(NormalizedTestResult? other) => string.Compare(TestName, other?.TestName, StringComparison.Ordinal);
+}
+
 public class CompatibilityComparisonTests(ITestOutputHelper output)
 {
     [Fact]
-    public void CompareOutputs()
+    public void CompareTrxOutputs()
     {
         var xbin = Path.Combine(
             AppContext.BaseDirectory,
@@ -26,13 +75,36 @@ public class CompatibilityComparisonTests(ITestOutputHelper output)
             "UXUnitCompat"
         );
 
+        var xTrxPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "XUnitCompat",
+            "debug",
+            "TestResults",
+            "xunit.trx"
+        );
+        var uxTrxPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "UXUnitCompat",
+            "debug",
+            "TestResults",
+            "uxunit.trx"
+        );
+
+        // Delete existing TRX files to ensure fresh results
+        if (File.Exists(xTrxPath)) File.Delete(xTrxPath);
+        if (File.Exists(uxTrxPath)) File.Delete(uxTrxPath);
+
         var xPsi = new ProcessStartInfo
         {
             FileName = xbin,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
-            ArgumentList = { "--no-ansi", "--report-xunit-trx", "--report-xunit-trx-filename", "uxunit.trx" },
+            ArgumentList = { "--no-ansi", "--report-xunit-trx", "--report-xunit-trx-filename", "xunit.trx" },
         };
         // Clear everything except DOTNET_ROOT
         var dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
@@ -75,133 +147,73 @@ public class CompatibilityComparisonTests(ITestOutputHelper output)
         output.WriteLine("UXUnit Error:");
         output.WriteLine(uerr);
 
-        // Normalize outputs for comparison
-        var xoutNormalized = NormalizeOutput(xout);
-        var uoutNormalized = NormalizeOutput(uout);
+        // Read and normalize TRX files
+        Assert.True(File.Exists(xTrxPath), $"XUnit TRX file not found at {xTrxPath}");
+        Assert.True(File.Exists(uxTrxPath), $"UXUnit TRX file not found at {uxTrxPath}");
 
-        Assert.Equal(xerr, uerr);
+        var xTrx = File.ReadAllText(xTrxPath);
+        var uxTrx = File.ReadAllText(uxTrxPath);
 
-        Assert.Equal(xoutNormalized, uoutNormalized);
+        output.WriteLine("XUnit TRX:");
+        output.WriteLine(xTrx);
+        output.WriteLine("UXUnit TRX:");
+        output.WriteLine(uxTrx);
+
+        var xTrxNormalized = ParseAndNormalizeTrx(xTrx);
+        var uxTrxNormalized = ParseAndNormalizeTrx(uxTrx);
+
+        output.WriteLine("XUnit Normalized:");
+        output.WriteLine(FormatNormalizedRun(xTrxNormalized));
+        output.WriteLine("UXUnit Normalized:");
+        output.WriteLine(FormatNormalizedRun(uxTrxNormalized));
+
+        Assert.Equal(xTrxNormalized, uxTrxNormalized);
     }
 
-    private static string NormalizeOutput(string output)
+    private static NormalizedTestRun ParseAndNormalizeTrx(string trxContent)
     {
-        // Split into lines
-        var lines = output.Split('\n', StringSplitOptions.None);
-        var normalizedLines = new List<string>();
-        var headerSkipped = false;
-        var inFailureDetails = false;
+        var testRun = Serde.Xml.XmlSerializer.Deserialize<TrxTestRun>(trxContent);
 
-        foreach (var line in lines)
-        {
-            // Skip the first header line (contains version/runner info)
-            if (!headerSkipped && (line.Contains("runner", StringComparison.OrdinalIgnoreCase) ||
-                                   line.Contains("xUnit.net", StringComparison.OrdinalIgnoreCase) ||
-                                   line.Contains("Testing.Platform", StringComparison.OrdinalIgnoreCase)))
-            {
-                headerSkipped = true;
-                continue;
-            }
+        var normalizedResults = testRun.Results
+            .Select(r => new NormalizedTestResult(
+                r.TestName,
+                r.Outcome,
+                NormalizeErrorMessage(r.Output?.ErrorInfo?.Message)))
+            .OrderBy(r => r.TestName)
+            .ToEq();
 
-            // Skip empty lines immediately after header until we see content
-            if (headerSkipped && string.IsNullOrWhiteSpace(line) && normalizedLines.Count == 0)
-                continue;
-
-            // Detect start of failure details
-            if (line.StartsWith("failed ", StringComparison.Ordinal))
-            {
-                inFailureDetails = true;
-                // Normalize: extract full test name, removing timing info
-                var testInfo = line.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-                if (testInfo.Length >= 2)
-                {
-                    var fullTestName = testInfo[1];
-                    // Remove timing info like "(0ms)" if present
-                    var parenIndex = fullTestName.IndexOf('(');
-                    if (parenIndex > 0)
-                    {
-                        fullTestName = fullTestName.Substring(0, parenIndex).Trim();
-                    }
-                    normalizedLines.Add($"failed {fullTestName}");
-                    continue;
-                }
-            }
-
-            // Skip stack trace lines (start with "at " or contain file paths)
-            if (inFailureDetails && (line.TrimStart().StartsWith("at ") ||
-                                      line.Contains(".cs:line") ||
-                                      line.Contains("End of stack trace")))
-            {
-                continue;
-            }
-
-            // End of failure details when we hit summary
-            if (line.Contains("Test run summary:", StringComparison.OrdinalIgnoreCase))
-            {
-                inFailureDetails = false;
-            }
-
-            // Normalize the "Test run summary" line - remove path and platform info
-            if (line.Contains("Test run summary:", StringComparison.OrdinalIgnoreCase))
-            {
-                // Extract just the status (Passed! or Failed!)
-                var statusStart = line.IndexOf("Test run summary:", StringComparison.OrdinalIgnoreCase);
-                if (statusStart >= 0)
-                {
-                    var afterSummary = line.Substring(statusStart + "Test run summary:".Length).Trim();
-                    var status = afterSummary.Split(' ')[0]; // Get "Passed!" or "Failed!"
-                    normalizedLines.Add($"Test run summary: {status}");
-                    continue;
-                }
-            }
-
-            // Normalize duration line - replace actual duration with placeholder
-            if (line.Contains("duration:", StringComparison.OrdinalIgnoreCase))
-            {
-                normalizedLines.Add("  duration: XXXms");
-                continue;
-            }
-
-            // Normalize assertion failure lines (Expected/Actual) - remove extra indentation
-            var trimmedLine = line.TrimStart();
-            if (trimmedLine.StartsWith("Expected:", StringComparison.OrdinalIgnoreCase))
-            {
-                var value = trimmedLine.Substring("Expected:".Length).Trim();
-                normalizedLines.Add($"Expected: {value}");
-                continue;
-            }
-            if (trimmedLine.StartsWith("Actual:", StringComparison.OrdinalIgnoreCase))
-            {
-                var value = trimmedLine.Substring("Actual:".Length).Trim();
-                normalizedLines.Add($"Actual: {value}");
-                continue;
-            }
-
-            // Keep all other lines as-is
-            normalizedLines.Add(line);
-        }
-
-        var result = string.Join('\n', normalizedLines);
-
-        // Trim leading and trailing whitespace/newlines
-        result = result.Trim();
-
-        // Remove blank lines immediately before summary totals
-        result = result.Replace("\n\n  total:", "\n  total:");
-
-        // Remove consecutive blank lines
-        while (result.Contains("\n\n\n"))
-        {
-            result = result.Replace("\n\n\n", "\n\n");
-        }
-
-        return result;
+        return new NormalizedTestRun(normalizedResults);
     }
 
-    private record ProcessResult
+    private static string? NormalizeErrorMessage(string? errorMessage)
     {
-        public int ExitCode { get; init; }
-        public string Output { get; init; } = string.Empty;
-        public string Error { get; init; } = string.Empty;
+        if (string.IsNullOrEmpty(errorMessage))
+            return null;
+
+        // Normalize whitespace
+        var normalized = Regex.Replace(errorMessage, @"\s+", " ").Trim();
+        return normalized;
+    }
+
+    private static string FormatNormalizedRun(NormalizedTestRun run)
+    {
+        var lines = new List<string>
+        {
+            $"Total: {run.Results.Length}",
+            $"Passed: {run.Results.Count(r => r.Outcome == "Passed")}",
+            $"Failed: {run.Results.Count(r => r.Outcome == "Failed")}",
+            ""
+        };
+
+        foreach (var result in run.Results)
+        {
+            lines.Add($"[{result.Outcome}] {result.TestName}");
+            if (result.ErrorMessage != null)
+            {
+                lines.Add($"  Error: {result.ErrorMessage}");
+            }
+        }
+
+        return string.Join(Environment.NewLine, lines);
     }
 }
