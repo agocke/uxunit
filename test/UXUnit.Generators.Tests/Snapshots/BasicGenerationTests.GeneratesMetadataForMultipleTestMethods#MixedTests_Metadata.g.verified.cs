@@ -55,11 +55,13 @@ namespace UXUnit.Generated
                         {
                             new TestCaseMetadata
                             {
-                                Arguments = new object?[] { "hello" }
+                                Arguments = new object?[] { "hello" },
+                                DisplayName = "input: \"hello\""
                             },
                             new TestCaseMetadata
                             {
-                                Arguments = new object?[] { "world" }
+                                Arguments = new object?[] { "world" },
+                                DisplayName = "input: \"world\""
                             },
                         },
                         ParameterizedBody = async (args, ct) =>

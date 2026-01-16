@@ -149,12 +149,15 @@ public static class TestExecutionEngine
         CancellationToken cancellationToken
     )
     {
+        var testId = GenerateTestId(test);
+        var testName = GenerateTestName(test);
+
         // Check if test case should be skipped
         if (test.TestCase?.Skip == true)
         {
             return TestResult.Skipped(
-                GenerateTestId(test),
-                test.Metadata.MethodName,
+                testId,
+                testName,
                 test.TestCase.SkipReason ?? "Test case marked as skipped",
                 test.ClassName,
                 test.AssemblyName
@@ -165,15 +168,14 @@ public static class TestExecutionEngine
         if (test.Metadata.Skip)
         {
             return TestResult.Skipped(
-                GenerateTestId(test),
-                test.Metadata.MethodName,
+                testId,
+                testName,
                 test.Metadata.SkipReason ?? "Test marked as skipped",
                 test.ClassName,
                 test.AssemblyName
             );
         }
 
-        var testId = GenerateTestId(test);
         var startTime = DateTime.UtcNow;
 
         try
@@ -213,7 +215,7 @@ public static class TestExecutionEngine
             var endTime = DateTime.UtcNow;
             return TestResult.Success(
                 testId,
-                test.Metadata.MethodName,
+                testName,
                 endTime - startTime,
                 test.ClassName,
                 test.AssemblyName
@@ -225,13 +227,27 @@ public static class TestExecutionEngine
             var endTime = DateTime.UtcNow;
             return TestResult.Failure(
                 testId,
-                test.Metadata.MethodName,
+                testName,
                 ex,
                 endTime - startTime,
                 test.ClassName,
                 test.AssemblyName
             );
         }
+    }
+
+    private static string GenerateTestName(TestDescriptor test)
+    {
+        var baseName = test.Metadata.MethodName;
+
+        // If this is a test case with a display name, append it
+        if (test.TestCase?.DisplayName != null)
+        {
+            return $"{baseName}({test.TestCase.DisplayName})";
+        }
+
+        // Regular test without cases
+        return baseName;
     }
 
     private static string GenerateTestId(TestDescriptor test)

@@ -114,7 +114,10 @@ public sealed class TestFramework : ITestFramework, IDataProducer
                         {
                             Uid = testfqn,
                             DisplayName = testfqn,
-                            Properties = new PropertyBag(new FailedTestNodeStateProperty(result.ErrorMessage!))
+                            Properties = new PropertyBag(
+                                new FailedTestNodeStateProperty(result.ErrorMessage!),
+                                new TrxExceptionProperty(result.ErrorMessage, result.StackTrace)
+                            )
                         },
                         _ => throw new InvalidOperationException($"Unknown test status {result.Status}")
                     };

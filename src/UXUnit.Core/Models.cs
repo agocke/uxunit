@@ -223,23 +223,3 @@ public sealed class TestCaseMetadata
 
     public string? SkipReason { get; init; }
 }
-
-/// <summary>
-/// Provides summary statistics for a test run.
-/// </summary>
-public sealed class TestRunSummary
-{
-    public int TotalTests { get; init; }
-
-    public int PassedTests { get; init; }
-
-    public int FailedTests { get; init; }
-
-    public int SkippedTests { get; init; }
-
-    public TimeSpan TotalDuration { get; init; }
-
-    public double PassRate => TotalTests > 0 ? (double)PassedTests / TotalTests : 0.0;
-
-    public bool AllPassed => FailedTests == 0;
-}
