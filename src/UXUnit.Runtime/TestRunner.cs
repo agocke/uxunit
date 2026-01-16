@@ -75,7 +75,7 @@ public static class TestRunner
     /// <summary>
     /// Prints the test run summary.
     /// </summary>
-    public static void PrintSummary(int total, int passed, int failed, int skipped, TimeSpan duration)
+    private static void PrintSummary(int total, int passed, int failed, int skipped, TimeSpan duration)
     {
         var statusText = failed > 0 ? "Failed!" : "Passed!";
         var assemblyPath = Environment.ProcessPath ?? string.Empty;

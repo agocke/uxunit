@@ -37,7 +37,7 @@ public static class TestExecutionEngine
         }
     }
 
-    private static List<TestDescriptor> CollectAllTests(
+    internal static List<TestDescriptor> CollectAllTests(
         IReadOnlyList<TestClassMetadata> testClasses
     )
     {
@@ -143,7 +143,7 @@ public static class TestExecutionEngine
         return results.OrderBy(r => r.TestId).ToArray();
     }
 
-    private static async Task<TestResult> ExecuteTestAsync(
+    internal static async Task<TestResult> ExecuteTestAsync(
         TestDescriptor test,
         TestExecutionOptions options,
         CancellationToken cancellationToken
@@ -270,7 +270,7 @@ public static class TestExecutionEngine
         return baseId;
     }
 
-    private class TestDescriptor
+    internal class TestDescriptor
     {
         public required TestMethodMetadata Metadata { get; init; }
         public required string ClassName { get; init; }
