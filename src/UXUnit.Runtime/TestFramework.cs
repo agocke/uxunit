@@ -1,16 +1,18 @@
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Testing.Extensions;
 using Microsoft.Testing.Extensions.TrxReport.Abstractions;
 using Microsoft.Testing.Platform.Builder;
 using Microsoft.Testing.Platform.Capabilities.TestFramework;
+using Microsoft.Testing.Platform.Extensions.Messages;
 using Microsoft.Testing.Platform.Extensions.TestFramework;
 using Microsoft.Testing.Platform.Requests;
 
 namespace UXUnit.Runtime;
 
-public sealed class TestFramework : ITestFramework
+public sealed class TestFramework : ITestFramework, IDataProducer
 {
     private const string s_displayName = "uxunit Microsoft.Testing.Platform framework";
 
@@ -22,7 +24,17 @@ public sealed class TestFramework : ITestFramework
 
     public string Description => s_displayName;
 
-    private TestFramework() { }
+    public Type[] DataTypesProduced => throw new NotImplementedException();
+
+    private readonly TestClassMetadata[] _testClasses;
+    private TestExecutionOptions _options;
+
+
+    private TestFramework(TestClassMetadata[] testClasses, TestExecutionOptions options)
+    {
+        _testClasses = testClasses;
+        _options = options;
+    }
 
     private sealed class TrxReportCapability : ITrxReportCapability
     {
@@ -47,7 +59,7 @@ public sealed class TestFramework : ITestFramework
             serviceProvider => new TestFrameworkCapabilities(new TrxReportCapability()),
             (capabilities, serviceProvider) =>
             {
-                return new TestFramework();
+                return new TestFramework(testClasses, options ?? new TestExecutionOptions());
             }
         );
 
@@ -77,12 +89,43 @@ public sealed class TestFramework : ITestFramework
         else if (context.Request is RunTestExecutionRequest)
         {
             // Filters are not supported yet
-            context.Complete();
+            try
+            {
+                // Run all the tests and publish the results to the MTP IMessageBus
+                var results = await TestExecutionEngine.ExecuteTestsAsync(_testClasses, _options, context.CancellationToken);
+                foreach (var result in results)
+                {
+                    TestNode testNode = result.Status switch
+                    {
+                        TestStatus.Skipped => new TestNode()
+                        {
+                            Uid = $"{result.ClassDisplayName ?? result.ClassName}.{result.TestName}",
+                            DisplayName = result.TestName,
+                            Properties = new PropertyBag(new SkippedTestNodeStateProperty(result.SkipReason ?? ""))
+                        },
+                        TestStatus.Passed => new TestNode()
+                        {
+                            Uid = $"{result.ClassDisplayName ?? result.ClassName}.{result.TestName}",
+                            DisplayName = result.TestName,
+                            Properties = new PropertyBag(new PassedTestNodeStateProperty())
+                        },
+                        TestStatus.Failed => new TestNode()
+                        {
+                            Uid = $"{result.ClassDisplayName ?? result.ClassName}.{result.TestName}",
+                            DisplayName = result.TestName,
+                            Properties = new PropertyBag(new FailedTestNodeStateProperty(result.ErrorMessage!))
+                        },
+                        _ => throw new System.InvalidOperationException($"Unknown test status {result.Status}")
+                    };
+                    await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(context.Request.Session.SessionUid, testNode)); )
+                }
+            }
+            finally
+            {
+                context.Complete();
+            }
         }
     }
 
-    public Task<bool> IsEnabledAsync()
-    {
-        throw new System.NotImplementedException();
-    }
+    public async Task<bool> IsEnabledAsync() => true;
 }
