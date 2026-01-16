@@ -24,7 +24,7 @@ public sealed class TestFramework : ITestFramework, IDataProducer
 
     public string Description => s_displayName;
 
-    public Type[] DataTypesProduced => throw new NotImplementedException();
+    public Type[] DataTypesProduced { get; } = [ typeof(TestNodeUpdateMessage) ];
 
     private readonly TestClassMetadata[] _testClasses;
     private TestExecutionOptions _options;
@@ -95,29 +95,30 @@ public sealed class TestFramework : ITestFramework, IDataProducer
                 var results = await TestExecutionEngine.ExecuteTestsAsync(_testClasses, _options, context.CancellationToken);
                 foreach (var result in results)
                 {
+                    var testfqn = $"{result.ClassDisplayName ?? result.ClassName}.{result.TestName}";
                     TestNode testNode = result.Status switch
                     {
                         TestStatus.Skipped => new TestNode()
                         {
-                            Uid = $"{result.ClassDisplayName ?? result.ClassName}.{result.TestName}",
-                            DisplayName = result.TestName,
+                            Uid = testfqn,
+                            DisplayName = testfqn,
                             Properties = new PropertyBag(new SkippedTestNodeStateProperty(result.SkipReason ?? ""))
                         },
                         TestStatus.Passed => new TestNode()
                         {
-                            Uid = $"{result.ClassDisplayName ?? result.ClassName}.{result.TestName}",
-                            DisplayName = result.TestName,
+                            Uid = testfqn,
+                            DisplayName = testfqn,
                             Properties = new PropertyBag(new PassedTestNodeStateProperty())
                         },
                         TestStatus.Failed => new TestNode()
                         {
-                            Uid = $"{result.ClassDisplayName ?? result.ClassName}.{result.TestName}",
-                            DisplayName = result.TestName,
+                            Uid = testfqn,
+                            DisplayName = testfqn,
                             Properties = new PropertyBag(new FailedTestNodeStateProperty(result.ErrorMessage!))
                         },
-                        _ => throw new System.InvalidOperationException($"Unknown test status {result.Status}")
+                        _ => throw new InvalidOperationException($"Unknown test status {result.Status}")
                     };
-                    await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(context.Request.Session.SessionUid, testNode)); )
+                    await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(context.Request.Session.SessionUid, testNode));
                 }
             }
             finally

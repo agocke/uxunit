@@ -167,7 +167,37 @@ public class CompatibilityComparisonTests(ITestOutputHelper output)
         output.WriteLine("UXUnit Normalized:");
         output.WriteLine(FormatNormalizedRun(uxTrxNormalized));
 
-        Assert.Equal(xTrxNormalized, uxTrxNormalized);
+        // Compare individual components for better error messages
+        Assert.Equal(xTrxNormalized.Results.Length, uxTrxNormalized.Results.Length);
+
+        var xResults = xTrxNormalized.Results.OrderBy(r => r.TestName).ToList();
+        var uxResults = uxTrxNormalized.Results.OrderBy(r => r.TestName).ToList();
+
+        for (int i = 0; i < xResults.Count; i++)
+        {
+            var x = xResults[i];
+            var ux = uxResults[i];
+
+            Assert.True(x.TestName == ux.TestName,
+            $"""
+            Test name mismatch at index {i}.
+            Expected: {x.TestName}
+            Actual: {ux.TestName}
+            """);
+            Assert.True(x.Outcome == ux.Outcome,
+            $"""
+            Outcome mismatch for '{x.TestName}':
+            Expected: {x.Outcome}
+            Actual: {ux.Outcome}
+            """);
+            Assert.True(x.ErrorMessage == ux.ErrorMessage,
+            $"""
+            Error message mismatch for '{x.TestName}':
+            Expected: {x.ErrorMessage ?? "(null)"}
+            Actual: {ux.ErrorMessage ?? "(null)"}
+            """);
+        }
+
     }
 
     private static NormalizedTestRun ParseAndNormalizeTrx(string trxContent)
