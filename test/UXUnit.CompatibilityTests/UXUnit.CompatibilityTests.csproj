@@ -8,18 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference
-      Include="../Assets/UXUnitCompat/UXUnitCompat.csproj"
-      ReferenceOutputAssembly="false"
-    />
-    <ProjectReference
-      Include="../Assets/XUnitCompat/XUnitCompat.csproj"
-      ReferenceOutputAssembly="false"
-    />
+    <ProjectReference Include="../Assets/UXUnitCompat/UXUnitCompat.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../Assets/XUnitCompat/XUnitCompat.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Serde.Xml" />
+    <PackageReference Include="StaticCs.Collections" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>

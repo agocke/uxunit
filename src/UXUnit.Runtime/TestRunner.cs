@@ -18,13 +18,21 @@ public static class TestRunner
     /// <param name="options">Execution options. If null, uses default options.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Exit code: 0 for success, 1 for test failures.</returns>
-    public static async Task<int> RunAsync(
+    internal static async Task<int> RunAsync(
         TestClassMetadata[] testClasses,
         TestExecutionOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         options ??= new TestExecutionOptions();
 
+        return await CustomRunAsync(testClasses, options, cancellationToken);
+    }
+
+    private static async Task<int> CustomRunAsync(
+        TestClassMetadata[] testClasses,
+        TestExecutionOptions options,
+        CancellationToken cancellationToken)
+    {
         var startTime = DateTime.UtcNow;
         var results = await TestExecutionEngine.ExecuteTestsAsync(testClasses, options, cancellationToken);
         var duration = DateTime.UtcNow - startTime;
@@ -67,7 +75,7 @@ public static class TestRunner
     /// <summary>
     /// Prints the test run summary.
     /// </summary>
-    public static void PrintSummary(int total, int passed, int failed, int skipped, TimeSpan duration)
+    private static void PrintSummary(int total, int passed, int failed, int skipped, TimeSpan duration)
     {
         var statusText = failed > 0 ? "Failed!" : "Passed!";
         var assemblyPath = Environment.ProcessPath ?? string.Empty;

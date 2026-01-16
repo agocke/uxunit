@@ -276,7 +276,18 @@ public sealed class TestGenerator : IIncrementalGenerator
             builder.Indent();
 
             var args = testCase.Arguments.Select(FormatConstantValue);
-            builder.AppendLine($"Arguments = new object?[] {{ {string.Join(", ", args)} }}");
+            builder.AppendLine($"Arguments = new object?[] {{ {string.Join(", ", args)} }},");
+
+            // Generate DisplayName with parameter names and values (e.g., "a: 1, b: 2, expected: 3")
+            var displayNameParts = new List<string>();
+            for (int i = 0; i < testCase.Arguments.Length && i < parameters.Length; i++)
+            {
+                var paramName = parameters[i].Name;
+                var paramValue = FormatDisplayValue(testCase.Arguments[i]);
+                displayNameParts.Add($"{paramName}: {paramValue}");
+            }
+            var displayName = string.Join(", ", displayNameParts);
+            builder.AppendLine($"DisplayName = \"{displayName}\"");
 
             builder.Dedent();
             builder.AppendLine("},");
@@ -418,6 +429,31 @@ public sealed class TestGenerator : IIncrementalGenerator
                 _ => constant.Value!.ToString()!
             },
             TypedConstantKind.Enum => $"({constant.Type!.ToDisplayString()}){constant.Value}",
+            TypedConstantKind.Type => $"typeof({((ITypeSymbol)constant.Value!).ToDisplayString()})",
+            _ => constant.Value?.ToString() ?? "null"
+        };
+    }
+
+    /// <summary>
+    /// Formats a constant value for display in test names (human-readable format).
+    /// </summary>
+    private static string FormatDisplayValue(TypedConstant constant)
+    {
+        if (constant.IsNull)
+        {
+            return "null";
+        }
+
+        return constant.Kind switch
+        {
+            TypedConstantKind.Primitive => constant.Type?.SpecialType switch
+            {
+                SpecialType.System_String => $"\\\"{constant.Value}\\\"",
+                SpecialType.System_Char => $"'{constant.Value}'",
+                SpecialType.System_Boolean => constant.Value!.ToString()!.ToLowerInvariant(),
+                _ => constant.Value!.ToString()!
+            },
+            TypedConstantKind.Enum => constant.Value?.ToString() ?? "null",
             TypedConstantKind.Type => $"typeof({((ITypeSymbol)constant.Value!).ToDisplayString()})",
             _ => constant.Value?.ToString() ?? "null"
         };

@@ -4,7 +4,7 @@ using UXUnit.Generated;
 
 class Program
 {
-    public static async Task<int> Main()
+    public static async Task<int> Main(string[] args)
     {
         Console.WriteLine("uxunit runner v0.0.1");
         Console.WriteLine();
@@ -18,6 +18,6 @@ class Program
             ParallelExecution = false
         };
 
-        return await TestRunner.RunAsync(allTests, options);
+        return await TestFramework.RunAsync(args, allTests, options);
     }
 }

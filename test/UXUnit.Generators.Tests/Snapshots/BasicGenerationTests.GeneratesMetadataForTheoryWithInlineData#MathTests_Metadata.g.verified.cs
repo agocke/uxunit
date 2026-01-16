@@ -29,11 +29,13 @@ namespace UXUnit.Generated
                         {
                             new TestCaseMetadata
                             {
-                                Arguments = new object?[] { 1, 2, 3 }
+                                Arguments = new object?[] { 1, 2, 3 },
+                                DisplayName = "a: 1, b: 2, sum: 3"
                             },
                             new TestCaseMetadata
                             {
-                                Arguments = new object?[] { 5, 7, 12 }
+                                Arguments = new object?[] { 5, 7, 12 },
+                                DisplayName = "a: 5, b: 7, sum: 12"
                             },
                         },
                         ParameterizedBody = async (args, ct) =>
