@@ -204,6 +204,7 @@ public sealed class TestGenerator : IIncrementalGenerator
         var isAsync = IsAsyncMethod(method.MethodSymbol);
         var isStatic = method.MethodSymbol.IsStatic;
         var containingTypeName = method.ContainingClass.ToDisplayString();
+        var implementsIDisposable = ImplementsIDisposable(method.ContainingClass);
 
         builder.AppendLine("new TestMethodMetadata.Fact");
         builder.AppendLine("{");
@@ -237,10 +238,10 @@ public sealed class TestGenerator : IIncrementalGenerator
             {
                 builder.AppendLine($"instance.{methodName}();");
             }
-            builder.AppendLine("if (instance is IDisposable disposable)");
-            builder.Indent();
-            builder.AppendLine("disposable.Dispose();");
-            builder.Dedent();
+            if (implementsIDisposable)
+            {
+                builder.AppendLine("((IDisposable)instance).Dispose();");
+            }
         }
 
         builder.Dedent();
@@ -257,6 +258,7 @@ public sealed class TestGenerator : IIncrementalGenerator
         var isAsync = IsAsyncMethod(method.MethodSymbol);
         var isStatic = method.MethodSymbol.IsStatic;
         var containingTypeName = method.ContainingClass.ToDisplayString();
+        var implementsIDisposable = ImplementsIDisposable(method.ContainingClass);
         var parameters = method.MethodSymbol.Parameters;
 
         builder.AppendLine("new TestMethodMetadata.Theory");
@@ -309,10 +311,10 @@ public sealed class TestGenerator : IIncrementalGenerator
             builder.AppendLine($"var instance = new {containingTypeName}();");
             var methodCall = GenerateMethodCall("instance", methodName, parameters, isAsync);
             builder.AppendLine(methodCall);
-            builder.AppendLine("if (instance is IDisposable disposable)");
-            builder.Indent();
-            builder.AppendLine("disposable.Dispose();");
-            builder.Dedent();
+            if (implementsIDisposable)
+            {
+                builder.AppendLine("((IDisposable)instance).Dispose();");
+            }
         }
 
         builder.Dedent();
@@ -399,6 +401,12 @@ public sealed class TestGenerator : IIncrementalGenerator
     private static bool IsAsyncMethod(IMethodSymbol method)
     {
         return method.ReturnType.Name == "Task" || method.ReturnType.Name == "ValueTask";
+    }
+
+    private static bool ImplementsIDisposable(INamedTypeSymbol type)
+    {
+        return type.AllInterfaces.Any(i =>
+            i.ToDisplayString() == "System.IDisposable");
     }
 
     private static string GetSafeClassName(INamedTypeSymbol type)
