@@ -29,8 +29,6 @@ namespace UXUnit.Generated
                         {
                             var instance = new MixedTests();
                             instance.Test1();
-                            if (instance is IDisposable disposable)
-                                disposable.Dispose();
                         }
                     },
                     new TestMethodMetadata.Fact
@@ -42,8 +40,6 @@ namespace UXUnit.Generated
                         {
                             var instance = new MixedTests();
                             instance.Test2();
-                            if (instance is IDisposable disposable)
-                                disposable.Dispose();
                         }
                     },
                     new TestMethodMetadata.Theory
@@ -56,20 +52,18 @@ namespace UXUnit.Generated
                             new TestCaseMetadata
                             {
                                 Arguments = new object?[] { "hello" },
-                                DisplayName = "input: \"hello\""
+                                DisplayName = "input: \\\"hello\\\""
                             },
                             new TestCaseMetadata
                             {
                                 Arguments = new object?[] { "world" },
-                                DisplayName = "input: \"world\""
+                                DisplayName = "input: \\\"world\\\""
                             },
                         },
                         ParameterizedBody = async (args, ct) =>
                         {
                             var instance = new MixedTests();
                             instance.StringTest((string)args[0]!);
-                            if (instance is IDisposable disposable)
-                                disposable.Dispose();
                         }
                     },
                 },

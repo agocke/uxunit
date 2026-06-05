@@ -42,8 +42,6 @@ namespace UXUnit.Generated
                         {
                             var instance = new MathTests();
                             instance.AddTest((int)args[0]!, (int)args[1]!, (int)args[2]!);
-                            if (instance is IDisposable disposable)
-                                disposable.Dispose();
                         }
                     },
                 },

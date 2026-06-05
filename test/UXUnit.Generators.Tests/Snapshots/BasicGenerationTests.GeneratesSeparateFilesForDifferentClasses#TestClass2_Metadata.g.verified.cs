@@ -29,8 +29,6 @@ namespace UXUnit.Generated
                         {
                             var instance = new TestClass2();
                             instance.Test2();
-                            if (instance is IDisposable disposable)
-                                disposable.Dispose();
                         }
                     },
                 },
