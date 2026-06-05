@@ -288,7 +288,7 @@ public sealed class TestGenerator : IIncrementalGenerator
                 var paramValue = FormatDisplayValue(testCase.Arguments[i]);
                 displayNameParts.Add($"{paramName}: {paramValue}");
             }
-            var displayName = string.Join(", ", displayNameParts);
+            var displayName = EscapeString(string.Join(", ", displayNameParts));
             builder.AppendLine($"DisplayName = \"{displayName}\"");
 
             builder.Dedent();
