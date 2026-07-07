@@ -17,7 +17,6 @@ namespace UXUnit.Generated
             new TestClassMetadata
             {
                 ClassName = "TestClass1",
-                AssemblyName = "GeneratesSeparateFilesForDifferentClasses",
                 CreateInstance = () => new global::TestClass1(),
                 TestDispatch = async (receiver, methodName, theoryArgs) =>
                 {

@@ -17,7 +17,6 @@ namespace UXUnit.Generated
             new TestClassMetadata
             {
                 ClassName = "SimpleTests",
-                AssemblyName = "GeneratesMetadataForSimpleFact",
                 CreateInstance = () => new global::SimpleTests(),
                 TestDispatch = async (receiver, methodName, theoryArgs) =>
                 {

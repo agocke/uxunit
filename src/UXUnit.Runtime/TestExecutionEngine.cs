@@ -211,8 +211,7 @@ public static class TestExecutionEngine
                     testId,
                     methodName,
                     test.Method.SkipReason ?? "Test marked as skipped",
-                    test.ClassName,
-                    test.Class.AssemblyName
+                    test.ClassName
                 )
             ];
         }
@@ -232,8 +231,7 @@ public static class TestExecutionEngine
                     methodName,
                     ex.Message,
                     ex.StackTrace,
-                    test.ClassName,
-                    test.Class.AssemblyName
+                    test.ClassName
                 )
             ];
         }
@@ -254,8 +252,7 @@ public static class TestExecutionEngine
                                 testClassInstance,
                                 methodName,
                                 null,
-                                test.ClassName,
-                                test.Class.AssemblyName
+                                test.ClassName
                             )
                         ];
                     }
@@ -275,8 +272,7 @@ public static class TestExecutionEngine
                             testClassInstance,
                             methodName,
                             cases[i].Arguments,
-                            test.ClassName,
-                            test.Class.AssemblyName
+                            test.ClassName
                         );
                     }
                     return results;
@@ -302,8 +298,7 @@ public static class TestExecutionEngine
             object? testClassInstance,
             string methodName,
             object? theoryArgs,
-            string className,
-            string assemblyName
+            string className
         )
         {
             var sw = new Stopwatch();
@@ -321,8 +316,7 @@ public static class TestExecutionEngine
                         testName,
                         ex,
                         sw.Elapsed,
-                        className,
-                        assemblyName
+                        className
                     );
             }
             sw.Stop();
@@ -330,8 +324,7 @@ public static class TestExecutionEngine
                 testId,
                 testName,
                 sw.Elapsed,
-                className,
-                assemblyName
+                className
             );
         }
     }

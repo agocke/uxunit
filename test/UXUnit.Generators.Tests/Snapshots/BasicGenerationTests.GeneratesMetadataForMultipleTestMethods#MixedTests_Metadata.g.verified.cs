@@ -17,7 +17,6 @@ namespace UXUnit.Generated
             new TestClassMetadata
             {
                 ClassName = "MixedTests",
-                AssemblyName = "GeneratesMetadataForMultipleTestMethods",
                 CreateInstance = () => new global::MixedTests(),
                 TestDispatch = async (receiver, methodName, theoryArgs) =>
                 {

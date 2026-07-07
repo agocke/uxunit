@@ -17,7 +17,6 @@ namespace UXUnit.Generated
             new TestClassMetadata
             {
                 ClassName = "MathTests",
-                AssemblyName = "GeneratesMetadataForTheoryWithInlineData",
                 CreateInstance = () => new global::MathTests(),
                 TestDispatch = async (receiver, methodName, theoryArgs) =>
                 {

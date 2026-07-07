@@ -52,8 +52,6 @@ public sealed class TestResult
 
     public string? ClassDisplayName { get; init; }
 
-    public required string AssemblyName { get; init; }
-
     public TestStatus Status { get; init; }
 
     public TimeSpan Duration { get; init; }
@@ -78,15 +76,13 @@ public sealed class TestResult
         string testId,
         string testName,
         TimeSpan duration,
-        string className,
-        string assemblyName
+        string className
     ) =>
         new()
         {
             TestId = testId,
             TestName = testName,
             ClassName = className,
-            AssemblyName = assemblyName,
             Status = TestStatus.Passed,
             Duration = duration,
         };
@@ -99,15 +95,13 @@ public sealed class TestResult
         string testName,
         Exception exception,
         TimeSpan duration,
-        string className,
-        string assemblyName
+        string className
     ) =>
         new()
         {
             TestId = testId,
             TestName = testName,
             ClassName = className,
-            AssemblyName = assemblyName,
             Status = TestStatus.Failed,
             Duration = duration,
             ErrorMessage = exception.Message,
@@ -123,15 +117,13 @@ public sealed class TestResult
         string testName,
         string errorMessage,
         string? stackTrace,
-        string className,
-        string assemblyName
+        string className
     ) =>
         new()
         {
             TestId = testId,
             TestName = testName,
             ClassName = className,
-            AssemblyName = assemblyName,
             Status = TestStatus.Failed,
             ErrorMessage = errorMessage,
             StackTrace = stackTrace,
@@ -144,15 +136,13 @@ public sealed class TestResult
         string testId,
         string testName,
         string reason,
-        string className,
-        string assemblyName
+        string className
     ) =>
         new()
         {
             TestId = testId,
             TestName = testName,
             ClassName = className,
-            AssemblyName = assemblyName,
             Status = TestStatus.Skipped,
             SkipReason = reason,
         };
@@ -164,8 +154,6 @@ public sealed class TestResult
 public sealed class TestClassMetadata
 {
     public required string ClassName { get; init; }
-
-    public required string AssemblyName { get; init; }
 
     public string? DisplayName { get; init; }
 

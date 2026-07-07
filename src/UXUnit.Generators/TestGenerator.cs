@@ -175,7 +175,6 @@ public sealed class TestGenerator : IIncrementalGenerator
         builder.AppendLine("{");
         builder.Indent();
         builder.AppendLine($"ClassName = \"{className}\",");
-        builder.AppendLine($"AssemblyName = \"{testClass.TestClass.ContainingAssembly.Name}\",");
 
         if (isClassStatic)
         {
