@@ -217,23 +217,26 @@ public static class TestExecutionEngine
         }
 
         object? testClassInstance = null;
-        try
+        if (!test.Method.IsStatic)
         {
-            testClassInstance = test.Class.CreateInstance();
-        }
-        catch (Exception ex)
-        {
-            // If the delegate throws, create a fault result
-            return
-            [
-                TestResult.Fault(
-                    testId,
-                    methodName,
-                    ex.Message,
-                    ex.StackTrace,
-                    test.ClassName
-                )
-            ];
+            try
+            {
+                testClassInstance = test.Class.CreateInstance();
+            }
+            catch (Exception ex)
+            {
+                // If the delegate throws, create a fault result
+                return
+                [
+                    TestResult.Fault(
+                        testId,
+                        methodName,
+                        ex.Message,
+                        ex.StackTrace,
+                        test.ClassName
+                    )
+                ];
+            }
         }
 
         // Pattern match on Fact vs Theory
@@ -252,7 +255,8 @@ public static class TestExecutionEngine
                                 testClassInstance,
                                 methodName,
                                 null,
-                                test.ClassName
+                                test.ClassName,
+                                cancellationToken
                             )
                         ];
                     }
@@ -272,7 +276,8 @@ public static class TestExecutionEngine
                             testClassInstance,
                             methodName,
                             cases[i].Arguments,
-                            test.ClassName
+                            test.ClassName,
+                            cancellationToken
                         );
                     }
                     return results;
@@ -290,51 +295,49 @@ public static class TestExecutionEngine
                 disposable.Dispose();
             }
         }
-
-        static async Task<TestResult> RunTest(
-            string testId,
-            string testName,
-            TestClassMetadata.DispatchFunc dispatch,
-            object? testClassInstance,
-            string methodName,
-            object? theoryArgs,
-            string className
-        )
-        {
-            var sw = new Stopwatch();
-            sw.Start();
-            try
-            {
-                await dispatch(testClassInstance, methodName, theoryArgs);
-            }
-            catch (Exception ex)
-            {
-                // If the delegate throws, create a failure result
-                sw.Stop();
-                return TestResult.Failure(
-                        testId,
-                        testName,
-                        ex,
-                        sw.Elapsed,
-                        className
-                    );
-            }
-            sw.Stop();
-            return TestResult.Success(
-                testId,
-                testName,
-                sw.Elapsed,
-                className
-            );
-        }
     }
 
-    private static string GenerateTestName(TestDescriptor test)
+    private static async Task<TestResult> RunTest(
+        string testId,
+        string testName,
+        TestClassMetadata.DispatchFunc dispatch,
+        object? testClassInstance,
+        string methodName,
+        object? theoryArgs,
+        string className,
+        CancellationToken cancellationToken
+    )
     {
-        var baseName = test.Method.MethodName;
+        var sw = new Stopwatch();
+        sw.Start();
+        if (testClassInstance is TestBase testBase)
+        {
+            testBase.SetCts(CancellationTokenSource.CreateLinkedTokenSource(cancellationToken));
+        }
 
-        // Regular test without cases
-        return baseName;
+        try
+        {
+            await dispatch(testClassInstance, methodName, theoryArgs);
+        }
+        catch (Exception ex)
+        {
+            // If the delegate throws, create a failure result
+            sw.Stop();
+            return TestResult.Failure(
+                    testId,
+                    testName,
+                    ex,
+                    sw.Elapsed,
+                    className
+                );
+        }
+        sw.Stop();
+        return TestResult.Success(
+            testId,
+            testName,
+            sw.Elapsed,
+            className
+        );
     }
 
     private static string GenerateTestId(TestDescriptor test)

@@ -8,7 +8,12 @@ namespace UXUnit;
 /// </summary>
 public abstract class TestBase
 {
-    internal readonly CancellationTokenSource Cts = new();
+    private CancellationTokenSource? Cts = null;
 
-    protected CancellationToken CancellationToken => Cts.Token;
+    public void SetCts(CancellationTokenSource cts)
+    {
+        Cts = cts;
+    }
+
+    protected CancellationToken CancellationToken => Cts?.Token ?? CancellationToken.None;
 }

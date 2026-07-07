@@ -95,6 +95,62 @@ public class AsyncTests
     }
 
     [XunitFact]
+    public Task GeneratesMetadataForStaticFactMethod()
+    {
+        var source = """
+using UXUnit;
+
+public class StaticMethodTests
+{
+    [Fact]
+    public static void StaticPassingTest()
+    {
+        // Test implementation
+    }
+}
+""";
+        return VerifyGenerator(source);
+    }
+
+    [XunitFact]
+    public Task GeneratesMetadataForStaticTestClass()
+    {
+        var source = """
+using UXUnit;
+
+public static class StaticTestClass
+{
+    [Fact]
+    public static void StaticFact()
+    {
+        // Test implementation
+    }
+}
+""";
+        return VerifyGenerator(source);
+    }
+
+    [XunitFact]
+    public Task GeneratesMetadataForStaticTheoryMethod()
+    {
+        var source = """
+using UXUnit;
+
+public static class StaticTheoryClass
+{
+    [Theory]
+    [InlineData(1, 2, 3)]
+    [InlineData(5, 7, 12)]
+    public static void StaticAddTest(int a, int b, int sum)
+    {
+        // Test implementation
+    }
+}
+""";
+        return VerifyGenerator(source);
+    }
+
+    [XunitFact]
     public Task GeneratesSeparateFilesForDifferentClasses()
     {
         var source = """
