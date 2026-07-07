@@ -1,8 +1,8 @@
-# UXUnit Specification
+# NXTest Specification
 
 ## Overview
 
-This document provides a comprehensive specification of the UXUnit testing framework APIs, behaviors, and conventions.
+This document provides a comprehensive specification of the NXTest testing framework APIs, behaviors, and conventions.
 
 ## Core Concepts
 
@@ -425,7 +425,7 @@ public void TestWithOutput(ITestContext context)
 ### Global Configuration
 
 ```csharp
-[assembly: UXUnitConfiguration(
+[assembly: NXTestConfiguration(
     Mode = ParallelMode.Tests,
     MaxDegreeOfParallelism = 4,
     DefaultTimeout = 30000,
@@ -490,7 +490,7 @@ public class DatabaseTestAttribute : Attribute, ITestMethodAttribute
 
 ### Attribute Mapping
 
-| xUnit | UXUnit |
+| xUnit | NXTest |
 |-------|---------|
 | `[Fact]` | `[Fact]` |
 | `[Theory]` + `[InlineData]` | `[Theory]` + `[InlineData]` |
@@ -523,7 +523,7 @@ public class CalculatorTests
 }
 ```
 
-**UXUnit:**
+**NXTest:**
 ```csharp
 public class CalculatorTests
 {

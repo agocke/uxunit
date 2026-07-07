@@ -1,8 +1,8 @@
-# UXUnit.Core Design
+# NXTest.Core Design
 
 ## Overview
 
-UXUnit.Core is the foundational package that defines the core data models, attributes, and interfaces used throughout the UXUnit testing framework. This package has **no runtime dependencies** on other UXUnit packages and serves as the contract between the source generator, runtime, and user code.
+NXTest.Core is the foundational package that defines the core data models, attributes, and interfaces used throughout the NXTest testing framework. This package has **no runtime dependencies** on other NXTest packages and serves as the contract between the source generator, runtime, and user code.
 
 ## Design Principles
 
@@ -217,11 +217,11 @@ public interface ITestDataSource
 ## Package Structure
 
 ```
-UXUnit.Core/
+NXTest.Core/
 ├── Attributes.cs           # All attribute definitions
 ├── Models.cs              # TestResult, TestClassMetadata, etc.
 ├── Interfaces.cs          # ITestContext, ITestOutput, etc.
-└── UXUnit.Core.csproj
+└── NXTest.Core.csproj
 ```
 
 ## Design Decisions
@@ -252,7 +252,7 @@ Factory methods like `TestResult.Success()` provide:
 
 ## Versioning Strategy
 
-UXUnit.Core follows semantic versioning with strong compatibility guarantees:
+NXTest.Core follows semantic versioning with strong compatibility guarantees:
 
 - **Patch**: Bug fixes to documentation/comments only
 - **Minor**: New optional properties or methods (backward compatible)

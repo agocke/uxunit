@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>NXTestCompat</RootNamespace>
+    <TargetFramework>net8.0</TargetFramework>
+    <DefineConstants>NXTEST</DefineConstants>
+    <IsTestProject>true</IsTestProject>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../shared/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Use local NXTest packages -->
+    <ProjectReference Include="../../../src/NXTest.Core/NXTest.Core.csproj" />
+    <ProjectReference
+      Include="../../../src/NXTest.Generators/NXTest.Generators.csproj"
+      OutputItemType="Analyzer"
+      ReferenceOutputAssembly="false"
+    />
+    <ProjectReference Include="../../../src/NXTest.Runtime/NXTest.Runtime.csproj" />
+
+    <PackageReference Include="xunit.v3.assert" />
+  </ItemGroup>
+</Project>

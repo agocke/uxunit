@@ -15,8 +15,8 @@ Add the following package references to your test project:
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="UXUnit.Core" Version="1.0.0" />
-    <PackageReference Include="UXUnit.Generators" Version="1.0.0">
+    <PackageReference Include="NXTest.Core" Version="1.0.0" />
+    <PackageReference Include="NXTest.Generators" Version="1.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
@@ -36,7 +36,7 @@ Add the following package references to your test project:
 Add common usings to a `GlobalUsings.cs` file:
 
 ```csharp
-global using UXUnit;
+global using NXTest;
 global using static Xunit.Assert;
 ```
 
@@ -120,7 +120,7 @@ public class DatabaseTests : IDisposable
 
 ## Advanced Assertions
 
-UXUnit provides a fluent assertion API:
+NXTest provides a fluent assertion API:
 
 ```csharp
 public class AssertionExamples

@@ -1,8 +1,8 @@
-# UXUnit Design Overview
+# NXTest Design Overview
 
 ## Vision
 
-UXUnit is a small, simple unit testing framework for .NET that leverages source generators to provide compile-time test discovery, validation, and code generation. It aims to be an easy, drop-in replacement for the core of xUnit — covering the common testing scenarios without the size and complexity of a full-featured framework.
+NXTest is a small, simple unit testing framework for .NET that leverages source generators to provide compile-time test discovery, validation, and code generation. It aims to be an easy, drop-in replacement for the core of xUnit — covering the common testing scenarios without the size and complexity of a full-featured framework.
 
 ## Design Goals
 
@@ -24,15 +24,15 @@ UXUnit is a small, simple unit testing framework for .NET that leverages source 
 
 ```mermaid
 graph TB
-    A[Test Source Code] --> B[UXUnit.Generators]
+    A[Test Source Code] --> B[NXTest.Generators]
     B --> C[Generated Test Executors]
     B --> D[Test Metadata]
-    C --> E[UXUnit.Runtime]
+    C --> E[NXTest.Runtime]
     D --> E
     E --> F[TestResult Array]
     F --> G[Reporters/Formatters]
 
-    H[UXUnit.Core] -.defines models.-> B
+    H[NXTest.Core] -.defines models.-> B
     H -.defines models.-> E
 
     style B fill:#FFE5B4
@@ -42,7 +42,7 @@ graph TB
 
 ### Component Packages
 
-#### [UXUnit.Core](./design-core.md)
+#### [NXTest.Core](./design-core.md)
 **Purpose**: Pure data models and contracts
 **No runtime logic** - only data structures
 
@@ -52,7 +52,7 @@ graph TB
 
 See [Core Design Document](./design-core.md) for details.
 
-#### [UXUnit.Generators](./design-generator.md)
+#### [NXTest.Generators](./design-generator.md)
 **Purpose**: Compile-time code generation
 **Roslyn source generator**
 
@@ -63,7 +63,7 @@ See [Core Design Document](./design-core.md) for details.
 
 See [Generator Design Document](./design-generator.md) for details.
 
-#### [UXUnit.Runtime](./design-runtime.md)
+#### [NXTest.Runtime](./design-runtime.md)
 **Purpose**: Test execution engine
 **Pure function: metadata → results**
 
@@ -76,13 +76,13 @@ See [Runtime Design Document](./design-runtime.md) for details.
 
 #### Assertions
 
-UXUnit does not ship its own assertion library. Tests use `xunit.assert`, which keeps the framework small and eases migration from xUnit.
+NXTest does not ship its own assertion library. Tests use `xunit.assert`, which keeps the framework small and eases migration from xUnit.
 
 ## Key Design Principles
 
 ### 1. No Unnecessary Abstractions
 
-UXUnit is **the framework**, not a framework for building test runners:
+NXTest is **the framework**, not a framework for building test runners:
 
 - ❌ No `ITestRunner` interface - execution engine is a static function
 - ❌ No `ITestClassRunner` - generated code creates delegates directly
@@ -169,7 +169,7 @@ var results = await TestExecutionEngine.ExecuteTestsAsync(
 
 ## XUnit Migration Path
 
-UXUnit provides compatibility attributes for easy migration:
+NXTest provides compatibility attributes for easy migration:
 
 ```csharp
 // These work out of the box:
@@ -182,7 +182,7 @@ See [specification.md](./specification.md) for complete attribute reference.
 
 ## Documentation
 
-- **[design-core.md](./design-core.md)** - UXUnit.Core data models and contracts
+- **[design-core.md](./design-core.md)** - NXTest.Core data models and contracts
 - **[design-generator.md](./design-generator.md)** - Source generator implementation
 - **[design-runtime.md](./design-runtime.md)** - Test execution engine
 - **[specification.md](./specification.md)** - Complete API specification
