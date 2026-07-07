@@ -1,8 +1,8 @@
-# UXUnit.Generators Design
+# NXTest.Generators Design
 
 ## Overview
 
-UXUnit.Generators is a Roslyn source generator that analyzes test code at compile time and generates test execution code. This eliminates runtime reflection, enables compile-time validation, and produces simple, direct test runners.
+NXTest.Generators is a Roslyn source generator that analyzes test code at compile time and generates test execution code. This eliminates runtime reflection, enables compile-time validation, and produces simple, direct test runners.
 
 ## Design Principles
 
@@ -337,7 +337,7 @@ Support fast incremental builds:
 
 ```csharp
 [Generator]
-public class UXUnitSourceGenerator : IIncrementalGenerator
+public class NXTestSourceGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -369,7 +369,7 @@ public static readonly DiagnosticDescriptor TestMethodMustBePublic = new(
     id: "UX0001",
     title: "Test method must be public",
     messageFormat: "Test method '{0}' must be public",
-    category: "UXUnit.Usage",
+    category: "NXTest.Usage",
     defaultSeverity: DiagnosticSeverity.Error,
     isEnabledByDefault: true);
 
@@ -378,7 +378,7 @@ public static readonly DiagnosticDescriptor AvoidAsyncVoid = new(
     id: "UX1001",
     title: "Avoid async void test methods",
     messageFormat: "Test method '{0}' should return Task instead of async void",
-    category: "UXUnit.Usage",
+    category: "NXTest.Usage",
     defaultSeverity: DiagnosticSeverity.Warning,
     isEnabledByDefault: true);
 ```

@@ -1,8 +1,8 @@
-# UXUnit Data Model
+# NXTest Data Model
 
 ## Overview
 
-This document describes the internal data structures and models used by UXUnit for representing tests, execution context, and results. These models are used both at compile-time (by source generators) and at runtime (by the test execution engine).
+This document describes the internal data structures and models used by NXTest for representing tests, execution context, and results. These models are used both at compile-time (by source generators) and at runtime (by the test execution engine).
 
 ## Core Data Models
 
@@ -489,7 +489,7 @@ public sealed class TestResultJson
 Predefined diagnostic descriptors for source generation warnings and errors.
 
 ```csharp
-public static class UXUnitDiagnostics
+public static class NXTestDiagnostics
 {
     public static readonly DiagnosticDescriptor InvalidTestMethodSignature = new(
         "UX0001",
@@ -541,4 +541,4 @@ public static class UXUnitDiagnostics
 }
 ```
 
-This data model provides a comprehensive foundation for the UXUnit framework, enabling efficient test discovery, execution, and result reporting while maintaining type safety and performance through compile-time code generation.
+This data model provides a comprehensive foundation for the NXTest framework, enabling efficient test discovery, execution, and result reporting while maintaining type safety and performance through compile-time code generation.

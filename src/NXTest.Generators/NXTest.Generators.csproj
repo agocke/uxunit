@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <!-- AOT is not compatible with netstandard2.0 -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <PackageId>NXTest.Generators</PackageId>
+    <Title>NXTest Source Generators</Title>
+    <Description>Source generators for the NXTest testing framework</Description>
+    <PackageTags>testing;unit-testing;source-generator;dotnet</PackageTags>
+    <NoWarn>$(NoWarn);RS1035</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+    <PackageReference Include="StaticCS.IndentingBuilder" />
+  </ItemGroup>
+
+</Project>

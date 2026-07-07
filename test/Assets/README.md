@@ -1,20 +1,20 @@
-# UXUnit/XUnit Compatibility Tests
+# NXTest/XUnit Compatibility Tests
 
-This directory contains compatibility test projects that validate UXUnit works identically to XUnit when executing the same test code.
+This directory contains compatibility test projects that validate NXTest works identically to XUnit when executing the same test code.
 
 ## Project Structure
 
-- **`UXUnitCompat/`** - Test project using UXUnit framework
+- **`NXTestCompat/`** - Test project using NXTest framework
 - **`XUnitCompat/`** - Test project using XUnit framework  
 - **`shared/`** - Shared test code that works with both frameworks
 
 ## Shared Test Code
 
-The shared test files use conditional compilation (`#if UXUNIT`) to switch between framework-specific attributes while keeping the same test logic:
+The shared test files use conditional compilation (`#if NXTEST`) to switch between framework-specific attributes while keeping the same test logic:
 
 ```csharp
-#if UXUNIT
-[UXUnit.Test]
+#if NXTEST
+[NXTest.Test]
 #else
 [Fact]
 #endif
@@ -35,10 +35,10 @@ This approach ensures:
 Use `./compare-compat-outputs.sh` to validate compatibility:
 
 ```bash
-# Show what UXUnit should produce (XUnit baseline)
+# Show what NXTest should produce (XUnit baseline)
 ./compare-compat-outputs.sh baseline
 
-# Compare outputs (once UXUnit generator is implemented)
+# Compare outputs (once NXTest generator is implemented)
 ./compare-compat-outputs.sh compare
 
 # Show help
@@ -47,9 +47,9 @@ Use `./compare-compat-outputs.sh` to validate compatibility:
 
 ## Expected Behavior
 
-When the UXUnit generator is fully implemented:
+When the NXTest generator is fully implemented:
 
-1. **UXUnitCompat** should build and run successfully
+1. **NXTestCompat** should build and run successfully
 2. **Both projects** should produce identical test results
 3. **All tests** should pass with the same names and outcomes
 4. **Test counts** should match exactly
@@ -57,7 +57,7 @@ When the UXUnit generator is fully implemented:
 ## Current Status
 
 - ✅ **XUnitCompat** - Works correctly, provides baseline
-- ⏳ **UXUnitCompat** - Waiting for generator implementation
+- ⏳ **NXTestCompat** - Waiting for generator implementation
 - ✅ **Comparison Script** - Ready to validate once generator is complete
 
 ## Test Coverage
@@ -71,11 +71,11 @@ The compatibility tests include:
 
 ## Integration
 
-This validation should be part of the UXUnit development workflow:
+This validation should be part of the NXTest development workflow:
 
-1. Implement UXUnit generator features
+1. Implement NXTest generator features
 2. Run `./compare-compat-outputs.sh compare`
 3. Fix any compatibility issues until outputs match exactly
 4. Repeat for new features
 
-This ensures UXUnit maintains full compatibility with XUnit behavior.
+This ensures NXTest maintains full compatibility with XUnit behavior.

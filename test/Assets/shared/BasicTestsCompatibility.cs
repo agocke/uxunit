@@ -1,12 +1,12 @@
-#if UXUNIT
-using UXUnit;
+#if NXTEST
+using NXTest;
 #endif
 using Xunit;
 
-namespace UXUnit.Compatibility.Tests;
+namespace NXTest.Compatibility.Tests;
 
 /// <summary>
-/// Demonstrates compatibility between XUnit and UXUnit test frameworks.
+/// Demonstrates compatibility between XUnit and NXTest test frameworks.
 /// This class can be compiled and executed with either framework.
 /// </summary>
 public class BasicTestsCompatibility : IDisposable

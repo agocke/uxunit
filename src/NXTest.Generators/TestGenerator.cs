@@ -1,0 +1,541 @@
+#nullable enable
+
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
+using StaticCs;
+
+namespace NXTest.Generators;
+
+[Generator(LanguageNames.CSharp)]
+public sealed class TestGenerator : IIncrementalGenerator
+{
+    private const string FactAttributeName = "NXTest.FactAttribute";
+    private const string TheoryAttributeName = "NXTest.TheoryAttribute";
+    private const string InlineDataAttributeName = "NXTest.InlineDataAttribute";
+
+    public void Initialize(IncrementalGeneratorInitializationContext context)
+    {
+        // Register Fact attributes
+        var factMethods = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                FactAttributeName,
+                predicate: static (node, _) => node is MethodDeclarationSyntax,
+                transform: static (ctx, ct) => GetTestMethodInfo(ctx, isTheory: false, ct))
+            .Where(static m => m is not null)!;
+
+        // Register Theory attributes
+        var theoryMethods = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                TheoryAttributeName,
+                predicate: static (node, _) => node is MethodDeclarationSyntax,
+                transform: static (ctx, ct) => GetTestMethodInfo(ctx, isTheory: true, ct))
+            .Where(static m => m is not null)!;
+
+        // Combine Fact and Theory methods
+        var allTestMethods = factMethods.Collect().Combine(theoryMethods.Collect())
+            .Select(static (pair, _) => pair.Left.AddRange(pair.Right));
+
+        // Group test methods by their containing class
+        var testClassesWithMethods = allTestMethods
+            .Select(static (methods, _) =>
+            {
+                var grouped = methods
+                    .Where(m => m is not null)
+                    .GroupBy(
+                        m => m!.ContainingClass,
+                        SymbolEqualityComparer.Default);
+
+                return grouped
+                    .Select(g => new TestClassWithMethods(
+                        (INamedTypeSymbol)g.Key!,
+                        g.OfType<TestMethodInfo>().ToImmutableArray()))
+                    .ToImmutableArray();
+            });
+
+        // Generate metadata file for each test class
+        context.RegisterSourceOutput(testClassesWithMethods, static (spc, testClasses) =>
+        {
+            foreach (var testClass in testClasses)
+            {
+                GenerateTestClassFile(spc, testClass);
+            }
+        });
+
+        // Generate TestRegistry.g.cs
+        context.RegisterSourceOutput(testClassesWithMethods, static (spc, testClasses) =>
+        {
+            GenerateTestRegistry(spc, testClasses);
+        });
+    }
+
+    private static TestMethodInfo? GetTestMethodInfo(
+        GeneratorAttributeSyntaxContext context,
+        bool isTheory,
+        CancellationToken ct)
+    {
+        if (context.TargetSymbol is not IMethodSymbol methodSymbol)
+            return null;
+
+        if (context.TargetNode is not MethodDeclarationSyntax methodSyntax)
+            return null;
+
+        var containingClass = methodSymbol.ContainingType;
+        if (containingClass is null)
+            return null;
+
+        ImmutableArray<InlineDataCase> inlineDataCases = ImmutableArray<InlineDataCase>.Empty;
+
+        if (isTheory)
+        {
+            // Collect all InlineData attributes
+            var inlineDataAttributes = methodSymbol.GetAttributes()
+                .Where(attr => attr.AttributeClass?.ToDisplayString() == InlineDataAttributeName)
+                .ToImmutableArray();
+
+            var casesBuilder = ImmutableArray.CreateBuilder<InlineDataCase>();
+            foreach (var attr in inlineDataAttributes)
+            {
+                if (attr.ConstructorArguments.Length > 0)
+                {
+                    var paramsArg = attr.ConstructorArguments[0];
+                    if (paramsArg.Kind == TypedConstantKind.Array)
+                    {
+                        casesBuilder.Add(new InlineDataCase(paramsArg.Values));
+                    }
+                }
+            }
+            inlineDataCases = casesBuilder.ToImmutable();
+        }
+
+        return new TestMethodInfo(
+            containingClass,
+            methodSymbol,
+            methodSyntax,
+            isTheory,
+            inlineDataCases);
+    }
+
+    private static void GenerateTestClassFile(
+        SourceProductionContext context,
+        TestClassWithMethods testClass)
+    {
+        var className = testClass.TestClass.Name;
+        var safeClassName = GetSafeClassName(testClass.TestClass);
+        var fileName = $"{safeClassName}_Metadata.g.cs";
+
+        var builder = new IndentingBuilder();
+
+        builder.AppendLine("// <auto-generated/>");
+        builder.AppendLine("#nullable enable");
+        builder.AppendLine("");
+        builder.AppendLine("using System;");
+        builder.AppendLine("using System.Threading;");
+        builder.AppendLine("using System.Threading.Tasks;");
+        builder.AppendLine("using NXTest;");
+        builder.AppendLine("");
+        builder.AppendLine("namespace NXTest.Generated");
+        builder.AppendLine("{");
+        builder.Indent();
+        builder.AppendLine($"internal static class {safeClassName}_Metadata");
+        builder.AppendLine("{");
+        builder.Indent();
+        builder.AppendLine("public static TestClassMetadata GetMetadata()");
+        builder.AppendLine("{");
+        builder.Indent();
+
+        GenerateTestClassMetadata(builder, testClass);
+
+        builder.Dedent();
+        builder.AppendLine("}");
+        builder.Dedent();
+        builder.AppendLine("}");
+        builder.Dedent();
+        builder.AppendLine("}");
+
+        context.AddSource(fileName, SourceText.From(builder.ToString(), Encoding.UTF8));
+    }
+
+    private static void GenerateTestClassMetadata(
+        IndentingBuilder builder,
+        TestClassWithMethods testClass)
+    {
+        var className = testClass.TestClass.ToDisplayString();
+        var fqName = "global::" + className;
+        var isClassStatic = testClass.TestClass.IsStatic;
+
+        builder.AppendLine("return ");
+        builder.AppendLine("new TestClassMetadata");
+        builder.AppendLine("{");
+        builder.Indent();
+        builder.AppendLine($"ClassName = \"{className}\",");
+
+        if (isClassStatic)
+        {
+            builder.AppendLine("CreateInstance = () => null,");
+        }
+        else
+        {
+            builder.AppendLine($"CreateInstance = () => new {fqName}(),");
+        }
+
+        GenerateDispatch(builder, testClass, fqName);
+
+        builder.AppendLine("TestMethods = new TestMethodMetadata[]");
+        builder.AppendLine("{");
+        builder.Indent();
+
+        foreach (var method in testClass.Methods)
+        {
+            if (method.IsTheory)
+            {
+                GenerateTheoryMetadata(builder, method);
+            }
+            else
+            {
+                GenerateFactMetadata(builder, method);
+            }
+        }
+
+        builder.Dedent();
+        builder.AppendLine("},");
+        builder.Dedent();
+        builder.AppendLine("};");
+    }
+
+    private static void GenerateDispatch(
+        IndentingBuilder builder,
+        TestClassWithMethods testClass,
+        string fqName)
+    {
+        builder.AppendLine("TestDispatch = async (receiver, methodName, theoryArgs) =>");
+        builder.AppendLine("{");
+        builder.Indent();
+        builder.AppendLine("switch (methodName)");
+        builder.AppendLine("{");
+        builder.Indent();
+
+        foreach (var method in testClass.Methods)
+        {
+            builder.AppendLine($"case \"{method.MethodSymbol.Name}\":");
+            builder.AppendLine("{");
+            builder.Indent();
+            GenerateInvocation(builder, method, fqName);
+            builder.AppendLine("break;");
+            builder.Dedent();
+            builder.AppendLine("}");
+        }
+
+        builder.AppendLine("default:");
+        builder.Indent();
+        builder.AppendLine(
+            "throw new global::System.InvalidOperationException(\"Unknown test method: \" + methodName);");
+        builder.Dedent();
+
+        builder.Dedent();
+        builder.AppendLine("}");
+        builder.AppendLine("await global::System.Threading.Tasks.Task.CompletedTask;");
+        builder.Dedent();
+        builder.AppendLine("},");
+    }
+
+    private static void GenerateInvocation(
+        IndentingBuilder builder,
+        TestMethodInfo method,
+        string fqName)
+    {
+        var methodName = method.MethodSymbol.Name;
+        var isAsync = IsAsyncMethod(method.MethodSymbol);
+        var isStatic = method.MethodSymbol.IsStatic;
+        var parameters = method.MethodSymbol.Parameters;
+
+        var target = isStatic ? fqName : $"(({fqName})receiver!)";
+
+        var argList = "";
+        if (parameters.Length == 1)
+        {
+            // Single argument is boxed directly (no ValueTuple wrapper).
+            argList = $"({parameters[0].Type.ToDisplayString()})theoryArgs!";
+        }
+        else if (parameters.Length > 1)
+        {
+            // Cast straight to the concrete tuple type so arguments are strongly
+            // typed (no per-element unboxing cast via ITuple's object indexer).
+            builder.AppendLine($"var args = ({BuildValueTupleType(parameters)})theoryArgs!;");
+
+            var sb = new StringBuilder();
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                if (i > 0)
+                    sb.Append(", ");
+
+                sb.Append($"args.Item{i + 1}");
+            }
+            argList = sb.ToString();
+        }
+
+        var awaitKeyword = isAsync ? "await " : "";
+        builder.AppendLine($"{awaitKeyword}{target}.{methodName}({argList});");
+    }
+
+    private static string BuildValueTupleType(ImmutableArray<IParameterSymbol> parameters)
+    {
+        var types = parameters.Select(p => p.Type.ToDisplayString());
+        return $"global::System.ValueTuple<{string.Join(", ", types)}>";
+    }
+
+    private static void GenerateFactMetadata(
+        IndentingBuilder builder,
+        TestMethodInfo method)
+    {
+        var methodName = method.MethodSymbol.Name;
+        var isAsync = IsAsyncMethod(method.MethodSymbol);
+        var isStatic = method.MethodSymbol.IsStatic;
+
+        builder.AppendLine("new TestMethodMetadata.Fact");
+        builder.AppendLine("{");
+        builder.Indent();
+        builder.AppendLine($"MethodName = \"{methodName}\",");
+        builder.AppendLine($"IsAsync = {(isAsync ? "true" : "false")},");
+        builder.AppendLine($"IsStatic = {(isStatic ? "true" : "false")},");
+        builder.Dedent();
+        builder.AppendLine("},");
+    }
+
+    private static void GenerateTheoryMetadata(
+        IndentingBuilder builder,
+        TestMethodInfo method)
+    {
+        var methodName = method.MethodSymbol.Name;
+        var isAsync = IsAsyncMethod(method.MethodSymbol);
+        var isStatic = method.MethodSymbol.IsStatic;
+        var parameters = method.MethodSymbol.Parameters;
+
+        builder.AppendLine("new TestMethodMetadata.Theory");
+        builder.AppendLine("{");
+        builder.Indent();
+        builder.AppendLine($"MethodName = \"{methodName}\",");
+        builder.AppendLine($"IsAsync = {(isAsync ? "true" : "false")},");
+        builder.AppendLine($"IsStatic = {(isStatic ? "true" : "false")},");
+        builder.AppendLine("TestCases = new TestCaseInfo[]");
+        builder.AppendLine("{");
+        builder.Indent();
+
+        foreach (var testCase in method.InlineDataCases)
+        {
+            builder.AppendLine("new TestCaseInfo");
+            builder.AppendLine("{");
+            builder.Indent();
+
+            var args = testCase.Arguments.Select(FormatConstantValue).ToList();
+            // 1 arg: box the value directly. 2+ args: tuple literal. 0 args: null.
+            var arguments = args.Count switch
+            {
+                0 => "null",
+                1 => args[0],
+                _ => $"({string.Join(", ", args)})",
+            };
+            builder.AppendLine($"Arguments = {arguments},");
+
+            // Generate DisplayName with parameter names and values (e.g., "a: 1, b: 2, expected: 3")
+            var displayNameParts = new List<string>();
+            for (int i = 0; i < testCase.Arguments.Length && i < parameters.Length; i++)
+            {
+                var paramName = parameters[i].Name;
+                var paramValue = FormatDisplayValue(testCase.Arguments[i]);
+                displayNameParts.Add($"{paramName}: {paramValue}");
+            }
+            var displayName = EscapeString(string.Join(", ", displayNameParts));
+            builder.AppendLine($"DisplayName = \"{displayName}\",");
+
+            builder.Dedent();
+            builder.AppendLine("},");
+        }
+
+        builder.Dedent();
+        builder.AppendLine("},");
+        builder.Dedent();
+        builder.AppendLine("},");
+    }
+
+    private static void GenerateTestRegistry(
+        SourceProductionContext context,
+        ImmutableArray<TestClassWithMethods> testClasses)
+    {
+        var builder = new IndentingBuilder();
+
+        builder.AppendLine("// <auto-generated/>");
+        builder.AppendLine("#nullable enable");
+        builder.AppendLine("");
+        builder.AppendLine("using NXTest;");
+        builder.AppendLine("");
+        builder.AppendLine("namespace NXTest.Generated");
+        builder.AppendLine("{");
+        builder.Indent();
+        builder.AppendLine("internal static class TestRegistry");
+        builder.AppendLine("{");
+        builder.Indent();
+        builder.AppendLine("public static TestClassMetadata[] GetAllTests()");
+        builder.AppendLine("{");
+        builder.Indent();
+        builder.AppendLine("return new TestClassMetadata[]");
+        builder.AppendLine("{");
+        builder.Indent();
+
+        foreach (var testClass in testClasses)
+        {
+            var safeClassName = GetSafeClassName(testClass.TestClass);
+            builder.AppendLine($"{safeClassName}_Metadata.GetMetadata(),");
+        }
+
+        builder.Dedent();
+        builder.AppendLine("};");
+        builder.Dedent();
+        builder.AppendLine("}");
+        builder.Dedent();
+        builder.AppendLine("}");
+        builder.Dedent();
+        builder.AppendLine("}");
+
+        context.AddSource("TestRegistry.g.cs", SourceText.From(builder.ToString(), Encoding.UTF8));
+    }
+
+    private static bool IsAsyncMethod(IMethodSymbol method)
+    {
+        return method.ReturnType.Name == "Task" || method.ReturnType.Name == "ValueTask";
+    }
+
+    private static string GetSafeClassName(INamedTypeSymbol type)
+    {
+        var displayString = type.ToDisplayString();
+        return displayString
+            .Replace(".", "_")
+            .Replace("<", "_")
+            .Replace(">", "_")
+            .Replace(",", "_")
+            .Replace(" ", "");
+    }
+
+    private static string FormatConstantValue(TypedConstant constant)
+    {
+        if (constant.IsNull)
+        {
+            return "null";
+        }
+
+        return constant.Kind switch
+        {
+            TypedConstantKind.Primitive => constant.Type?.SpecialType switch
+            {
+                SpecialType.System_String => $"\"{EscapeString((string)constant.Value!)}\"",
+                SpecialType.System_Char => $"'{EscapeChar((char)constant.Value!)}'",
+                SpecialType.System_Boolean => constant.Value!.ToString()!.ToLowerInvariant(),
+                _ => constant.Value!.ToString()!
+            },
+            TypedConstantKind.Enum => $"({constant.Type!.ToDisplayString()}){constant.Value}",
+            TypedConstantKind.Type => $"typeof({((ITypeSymbol)constant.Value!).ToDisplayString()})",
+            _ => constant.Value?.ToString() ?? "null"
+        };
+    }
+
+    /// <summary>
+    /// Formats a constant value for display in test names (human-readable format).
+    /// </summary>
+    private static string FormatDisplayValue(TypedConstant constant)
+    {
+        if (constant.IsNull)
+        {
+            return "null";
+        }
+
+        return constant.Kind switch
+        {
+            TypedConstantKind.Primitive => constant.Type?.SpecialType switch
+            {
+                SpecialType.System_String => $"\\\"{constant.Value}\\\"",
+                SpecialType.System_Char => $"'{constant.Value}'",
+                SpecialType.System_Boolean => constant.Value!.ToString()!.ToLowerInvariant(),
+                _ => constant.Value!.ToString()!
+            },
+            TypedConstantKind.Enum => constant.Value?.ToString() ?? "null",
+            TypedConstantKind.Type => $"typeof({((ITypeSymbol)constant.Value!).ToDisplayString()})",
+            _ => constant.Value?.ToString() ?? "null"
+        };
+    }
+
+    private static string EscapeString(string value)
+    {
+        return value
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"")
+            .Replace("\r", "\\r")
+            .Replace("\n", "\\n")
+            .Replace("\t", "\\t");
+    }
+
+    private static string EscapeChar(char value)
+    {
+        return value switch
+        {
+            '\\' => "\\\\",
+            '\'' => "\\'",
+            '\r' => "\\r",
+            '\n' => "\\n",
+            '\t' => "\\t",
+            _ => value.ToString()
+        };
+    }
+
+    // Data model classes
+    private sealed class TestMethodInfo
+    {
+        public INamedTypeSymbol ContainingClass { get; }
+        public IMethodSymbol MethodSymbol { get; }
+        public MethodDeclarationSyntax MethodSyntax { get; }
+        public bool IsTheory { get; }
+        public ImmutableArray<InlineDataCase> InlineDataCases { get; }
+
+        public TestMethodInfo(
+            INamedTypeSymbol containingClass,
+            IMethodSymbol methodSymbol,
+            MethodDeclarationSyntax methodSyntax,
+            bool isTheory,
+            ImmutableArray<InlineDataCase> inlineDataCases)
+        {
+            ContainingClass = containingClass;
+            MethodSymbol = methodSymbol;
+            MethodSyntax = methodSyntax;
+            IsTheory = isTheory;
+            InlineDataCases = inlineDataCases;
+        }
+    }
+
+    private sealed class InlineDataCase
+    {
+        public ImmutableArray<TypedConstant> Arguments { get; }
+
+        public InlineDataCase(ImmutableArray<TypedConstant> arguments)
+        {
+            Arguments = arguments;
+        }
+    }
+
+    private sealed class TestClassWithMethods
+    {
+        public INamedTypeSymbol TestClass { get; }
+        public ImmutableArray<TestMethodInfo> Methods { get; }
+
+        public TestClassWithMethods(
+            INamedTypeSymbol testClass,
+            ImmutableArray<TestMethodInfo> methods)
+        {
+            TestClass = testClass;
+            Methods = methods;
+        }
+    }
+}

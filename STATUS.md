@@ -1,12 +1,12 @@
-# UXUnit Project Status
+# NXTest Project Status
 
-This document tracks the current status of UXUnit development against its design goals and requirements.
+This document tracks the current status of NXTest development against its design goals and requirements.
 
 ## Project Overview
 
-UXUnit is a next-generation unit testing framework for .NET that leverages source generators to provide compile-time test discovery, validation, and code generation.
+NXTest is a next-generation unit testing framework for .NET that leverages source generators to provide compile-time test discovery, validation, and code generation.
 
-**Last Updated:** September 23, 2025 - Completed UXUnit.Runtime execution engine with comprehensive validation
+**Last Updated:** September 23, 2025 - Completed NXTest.Runtime execution engine with comprehensive validation
 
 ## Core Goals Status
 
@@ -43,21 +43,21 @@ UXUnit is a next-generation unit testing framework for .NET that leverages sourc
 
 ### Core Components
 
-#### UXUnit.Core ✅ (Basic Implementation)
+#### NXTest.Core ✅ (Basic Implementation)
 - [x] Core interfaces defined (`ITestClassRunner`, etc.)
 - [x] Base attribute classes (`TestAttribute`, `TestClassAttribute`, etc.)
 - [x] XUnit compatibility attributes (`FactAttribute`, `TheoryAttribute`, `InlineDataAttribute`)
 - [x] Model classes for test metadata
 - [ ] Advanced attributes (retry, repeat, parallel control)
 
-#### UXUnit.Generators 🔄 (In Progress)
+#### NXTest.Generators 🔄 (In Progress)
 - [x] Basic source generator structure
 - [ ] Test class discovery
 - [ ] Test method analysis and validation
 - [ ] Code generation for test runners
 - [ ] Compile-time diagnostics
 
-#### UXUnit.Runtime ✅ (Implemented)
+#### NXTest.Runtime ✅ (Implemented)
 - [x] Complete test execution engine
 - [x] Parallel and sequential execution support
 - [x] Test lifecycle management (constructor/dispose)
@@ -66,7 +66,7 @@ UXUnit is a next-generation unit testing framework for .NET that leverages sourc
 - [x] Timeout handling and cancellation support
 - [x] Meta-testing validation framework
 
-#### UXUnit.Assertions ❌ (Not Started)
+#### NXTest.Assertions ❌ (Not Started)
 - [ ] Fluent assertion API
 - [ ] Detailed failure messages
 - [ ] Custom assertion extensions
@@ -94,12 +94,12 @@ UXUnit is a next-generation unit testing framework for .NET that leverages sourc
 ### Testing & Validation
 
 #### ✅ Test Infrastructure
-- [x] Compatibility test projects (UXUnitCompat, XUnitCompat)
+- [x] Compatibility test projects (NXTestCompat, XUnitCompat)
 - [x] Shared test files for validation (12 tests covering basic, parameterized, and async scenarios)
 - [x] E2E test infrastructure ready for generator implementation
-- [x] Automated compatibility test suite (`UXUnit.CompatibilityTests`)
+- [x] Automated compatibility test suite (`NXTest.CompatibilityTests`)
 - [x] Manual test runners for validation
-- [x] Comprehensive meta-testing framework (XUnit validates UXUnit)
+- [x] Comprehensive meta-testing framework (XUnit validates NXTest)
 
 #### ✅ Test Coverage
 - [x] Basic compatibility tests exist (simple assertions, exceptions, collections)
@@ -149,13 +149,13 @@ UXUnit is a next-generation unit testing framework for .NET that leverages sourc
 ### Recent Accomplishments
 1. **Complete runtime engine**: Fully functional test execution with parallel support
 2. **Comprehensive validation**: Meta-testing framework ensures engine reliability
-3. **E2E test infrastructure**: UXUnitCompat and XUnitCompat projects with 12 shared tests covering basic, parameterized, and async scenarios
+3. **E2E test infrastructure**: NXTestCompat and XUnitCompat projects with 12 shared tests covering basic, parameterized, and async scenarios
 4. **Dependency injection removed**: Simplified architecture focusing on core functionality
 5. **Test lifecycle support**: Full constructor/dispose pattern implementation
 
 ### Design Decisions
 1. **Non-sealed attributes**: Made base attributes non-sealed to enable XUnit compatibility inheritance
-2. **Clean slate approach**: Not maintaining full XUnit API compatibility where it conflicts with UXUnit design
+2. **Clean slate approach**: Not maintaining full XUnit API compatibility where it conflicts with NXTest design
 3. **Compile-time focus**: Prioritizing compile-time safety over runtime flexibility
 4. **No dependency injection**: Removed DI support to simplify architecture and improve performance
 5. **Manual test runners**: Implemented manual runners to validate execution engine before source generation
@@ -168,7 +168,7 @@ UXUnit is a next-generation unit testing framework for .NET that leverages sourc
 
 ### Medium Priority
 3. **Extended XUnit compatibility**: Add `[MemberData]` and `[Trait]` support
-4. **Assertion library**: Create UXUnit-specific assertions (with XUnit compatibility)
+4. **Assertion library**: Create NXTest-specific assertions (with XUnit compatibility)
 5. **Performance optimization**: Benchmark and optimize generated code
 
 ### Low Priority

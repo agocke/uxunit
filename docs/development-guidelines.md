@@ -1,4 +1,4 @@
-# Development Guidelines for UXUnit
+# Development Guidelines for NXTest
 
 ## Project Structure
 
@@ -38,18 +38,18 @@ The `Directory.Build.props` file establishes:
 
 ### Project-Specific Guidelines
 
-#### UXUnit.Core
+#### NXTest.Core
 - Contains fundamental types, attributes, and interfaces
 - Must be compatible with .NET 6.0+ for broad compatibility
 - No external dependencies except system libraries
 
-#### UXUnit.Generators  
+#### NXTest.Generators  
 - Source generator implementation
 - Must reference `Microsoft.CodeAnalysis.CSharp`
 - Include `<IncludeBuildOutput>false</IncludeBuildOutput>` in project files
 - Mark as analyzer: `<AnalyzerLanguage>C#</AnalyzerLanguage>`
 
-#### UXUnit.Runtime
+#### NXTest.Runtime
 - Test execution engine and runtime support
 - Can have more dependencies than Core project
 - Should remain lightweight for fast test startup
@@ -58,16 +58,16 @@ The `Directory.Build.props` file establishes:
 
 #### XUnit Compatibility
 - **Always use `xunit.assert`** for assertions - never create custom assertion libraries
-- Use conditional compilation (`#if UXUNIT` / `#if XUNIT`) for framework-specific code
+- Use conditional compilation (`#if NXTEST` / `#if XUNIT`) for framework-specific code
 - Test projects should demonstrate compatibility by compiling with both frameworks
 
 #### Test Organization
 ```
 test/
 ├── Assets/XUnitCompatibility/  # Compatibility demonstration tests
-├── UXUnit.Core.Tests/          # Unit tests for Core library
-├── UXUnit.Generators.Tests/    # Unit tests for source generators
-└── UXUnit.Integration.Tests/   # End-to-end integration tests
+├── NXTest.Core.Tests/          # Unit tests for Core library
+├── NXTest.Generators.Tests/    # Unit tests for source generators
+└── NXTest.Integration.Tests/   # End-to-end integration tests
 ```
 
 ## Build and Development
@@ -94,7 +94,7 @@ dotnet pack
 # Test XUnit compatibility
 cd test/Assets/XUnitCompatibility
 ./build-xunit.sh    # Test with XUnit
-./build-uxunit.sh   # Test with UXUnit
+./build-nxtest.sh   # Test with NXTest
 ```
 
 ### IDE Configuration
@@ -155,7 +155,7 @@ All packages inherit common metadata from `Directory.Build.props`:
 
 ### For Code Reviews
 1. **Check project files**: Verify new projects follow the Directory.Build.props conventions
-2. **Verify test compatibility**: Ensure test changes work with both XUnit and UXUnit
+2. **Verify test compatibility**: Ensure test changes work with both XUnit and NXTest
 3. **Package metadata**: Confirm appropriate package settings for new libraries
 
 ### Performance Considerations

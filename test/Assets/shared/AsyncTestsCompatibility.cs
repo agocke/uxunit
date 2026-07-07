@@ -1,12 +1,12 @@
-#if UXUNIT
-using UXUnit;
+#if NXTEST
+using NXTest;
 #endif
 using Xunit;
 
-namespace UXUnit.Compatibility.Tests;
+namespace NXTest.Compatibility.Tests;
 
 /// <summary>
-/// Demonstrates async test compatibility between XUnit and UXUnit.
+/// Demonstrates async test compatibility between XUnit and NXTest.
 /// </summary>
 public class AsyncTestsCompatibility
 {

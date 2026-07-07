@@ -1,12 +1,12 @@
-# UXUnit - Source-Generated Unit Testing Framework
+# NXTest - Source-Generated Unit Testing Framework
 
-[![CI](https://github.com/agocke/uxunit/actions/workflows/ci.yml/badge.svg)](https://github.com/agocke/uxunit/actions/workflows/ci.yml)
+[![CI](https://github.com/agocke/nxtest/actions/workflows/ci.yml/badge.svg)](https://github.com/agocke/nxtest/actions/workflows/ci.yml)
 
 A modern, source-generated replacement for xUnit that provides compile-time test discovery and simple functionality.
 
 ## Overview
 
-UXUnit leverages C# source generators to create a small, simple testing framework that eliminates runtime reflection and provides compile-time test validation. It aims to be an easy, drop-in replacement for the core of xUnit rather than a large, feature-rich framework.
+NXTest leverages C# source generators to create a small, simple testing framework that eliminates runtime reflection and provides compile-time test validation. It aims to be an easy, drop-in replacement for the core of xUnit rather than a large, feature-rich framework.
 
 ## Key Features
 
@@ -26,14 +26,14 @@ UXUnit leverages C# source generators to create a small, simple testing framewor
 
 ```
 ├── src/
-│   ├── UXUnit.Core/           # Core framework types and attributes
-│   ├── UXUnit.Generators/     # Source generators
-│   └── UXUnit.Runtime/        # Test runner and execution engine
+│   ├── NXTest.Core/           # Core framework types and attributes
+│   ├── NXTest.Generators/     # Source generators
+│   └── NXTest.Runtime/        # Test runner and execution engine
 ├── test/
-│   ├── Assets/                # Compatibility assets (UXUnitCompat, XUnitCompat, shared)
-│   ├── UXUnit.CompatibilityTests/
-│   ├── UXUnit.Generators.Tests/
-│   └── UXUnit.Runtime.Tests/
+│   ├── Assets/                # Compatibility assets (NXTestCompat, XUnitCompat, shared)
+│   ├── NXTest.CompatibilityTests/
+│   ├── NXTest.Generators.Tests/
+│   └── NXTest.Runtime.Tests/
 └── docs/                      # Documentation
 ```
 
