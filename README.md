@@ -2,22 +2,18 @@
 
 [![CI](https://github.com/agocke/uxunit/actions/workflows/ci.yml/badge.svg)](https://github.com/agocke/uxunit/actions/workflows/ci.yml)
 
-A modern, source-generated replacement for xUnit that provides compile-time test discovery, enhanced performance, and improved developer experience.
+A modern, source-generated replacement for xUnit that provides compile-time test discovery and simple functionality.
 
 ## Overview
 
-UXUnit leverages C# source generators to create a high-performance testing framework that eliminates runtime reflection and provides compile-time test validation.
+UXUnit leverages C# source generators to create a small, simple testing framework that eliminates runtime reflection and provides compile-time test validation. It aims to be an easy, drop-in replacement for the core of xUnit rather than a large, feature-rich framework.
 
 ## Key Features
 
 - **Source-Generated Test Discovery**: Tests are discovered at compile time, eliminating runtime reflection overhead
 - **Compile-Time Validation**: Test method signatures and attributes are validated during compilation
-- **Zero Runtime Dependencies**: No heavy framework dependencies at runtime
-- **Enhanced Performance**: Significantly faster test execution through pre-compiled test runners
 - **Rich Assertion Library**: Uses `xunit.assert` for compatibility and comprehensive assertion capabilities
 - **Parameterized Tests**: Full support for data-driven tests with source generators
-- **Parallel Execution**: Built-in support for parallel test execution with fine-grained control
-- **XUnit Compatibility**: Designed for easy migration from XUnit with shared assertion library
 
 ## Documentation
 
@@ -30,14 +26,14 @@ UXUnit leverages C# source generators to create a high-performance testing frame
 
 ```
 ├── src/
-│   ├── UXUnit.Core/           # Core framework types and interfaces
+│   ├── UXUnit.Core/           # Core framework types and attributes
 │   ├── UXUnit.Generators/     # Source generators
 │   └── UXUnit.Runtime/        # Test runner and execution engine
 ├── test/
-│   ├── Assets/XUnitCompatibility/ # XUnit compatibility demonstration
-│   ├── UXUnit.Core.Tests/
+│   ├── Assets/                # Compatibility assets (UXUnitCompat, XUnitCompat, shared)
+│   ├── UXUnit.CompatibilityTests/
 │   ├── UXUnit.Generators.Tests/
-│   └── UXUnit.Integration.Tests/
+│   └── UXUnit.Runtime.Tests/
 └── docs/                      # Documentation
 ```
 

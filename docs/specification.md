@@ -8,10 +8,9 @@ This document provides a comprehensive specification of the UXUnit testing frame
 
 ### Test Classes
 
-A test class is a class marked with the `[TestClass]` attribute that contains one or more test methods.
+A test class is a plain class containing one or more methods marked with `[Fact]` or `[Theory]`. Test classes are discovered automatically from those methods.
 
 #### Requirements
-- Must be marked with `[TestClass]` attribute
 - Must be public or internal
 - Must have a parameterless constructor
 - May contain setup and cleanup methods
@@ -19,16 +18,9 @@ A test class is a class marked with the `[TestClass]` attribute that contains on
 
 #### Example
 ```csharp
-[TestClass]
 public class CalculatorTests
 {
     private Calculator _calculator;
-
-    [ClassSetup]
-    public void InitializeClass()
-    {
-        // Run once before all tests in the class
-    }
 
     [Setup]
     public void Setup()
@@ -47,12 +39,6 @@ public class CalculatorTests
     public void Cleanup()
     {
         _calculator?.Dispose();
-    }
-
-    [ClassCleanup]
-    public void CleanupClass()
-    {
-        // Run once after all tests in the class
     }
 }
 ```
@@ -80,26 +66,6 @@ A test method is a method marked with the `[Test]` attribute within a test class
 ## Attributes
 
 ### Core Attributes
-
-#### `[TestClass]`
-Marks a class as containing test methods.
-
-```csharp
-[AttributeUsage(AttributeTargets.Class)]
-public class TestClassAttribute : Attribute
-{
-    public string? DisplayName { get; set; }
-    public string? Category { get; set; }
-    public bool Skip { get; set; }
-    public string? SkipReason { get; set; }
-}
-```
-
-**Properties:**
-- `DisplayName`: Custom display name for the test class
-- `Category`: Category for grouping tests
-- `Skip`: Whether to skip all tests in this class
-- `SkipReason`: Reason for skipping (required if Skip = true)
 
 #### `[Test]`
 Marks a method as a test case.
@@ -165,17 +131,10 @@ public class SetupAttribute : Attribute { }
 
 [AttributeUsage(AttributeTargets.Method)]
 public class CleanupAttribute : Attribute { }
-
-[AttributeUsage(AttributeTargets.Method)]
-public class ClassSetupAttribute : Attribute { }
-
-[AttributeUsage(AttributeTargets.Method)]
-public class ClassCleanupAttribute : Attribute { }
 ```
 
 **Requirements:**
 - Setup/Cleanup methods must be public and return void or Task
-- ClassSetup/ClassCleanup methods must be static
 - Multiple setup/cleanup methods are allowed (execution order is undefined)
 
 ### Advanced Attributes
@@ -212,25 +171,6 @@ public class RetryAttribute : Attribute
         if (maxAttempts <= 0) throw new ArgumentException("MaxAttempts must be positive");
         MaxAttempts = maxAttempts;
     }
-}
-```
-
-#### `[Parallel]`
-Controls parallel execution behavior.
-
-```csharp
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-public class ParallelAttribute : Attribute
-{
-    public ParallelExecution Execution { get; set; } = ParallelExecution.Enabled;
-    public string? Group { get; set; } // Tests in same group run sequentially
-}
-
-public enum ParallelExecution
-{
-    Enabled,    // Can run in parallel with other tests
-    Disabled,   // Must run sequentially
-    Required    // Must run in parallel (fails if not possible)
 }
 ```
 
@@ -387,41 +327,16 @@ public class JsonDataAttribute : Attribute
 
 ### Execution Order
 
-1. **Class Construction**: Test class instance is created
-2. **ClassSetup**: Static class setup methods are called (once per class)
-3. **For each test method**:
+1. **For each test method**:
+   - **Class Construction**: A new test class instance is created
    - **Setup**: Instance setup methods are called
    - **Test Execution**: The test method is invoked
    - **Cleanup**: Instance cleanup methods are called
-4. **ClassCleanup**: Static class cleanup methods are called (once per class)
-5. **Class Disposal**: Test class instance is disposed if it implements IDisposable
+   - **Class Disposal**: The test class instance is disposed if it implements IDisposable
 
 ### Parallel Execution
 
-Tests can run in parallel by default. Control parallel execution using:
-
-```csharp
-// Disable parallel execution for entire class
-[TestClass]
-[Parallel(Execution = ParallelExecution.Disabled)]
-public class SerialTests { }
-
-// Group tests that must run sequentially
-[TestClass]
-public class GroupedTests
-{
-    [Fact]
-    [Parallel(Group = "Database")]
-    public void DatabaseTest1() { }
-
-    [Fact]
-    [Parallel(Group = "Database")]
-    public void DatabaseTest2() { }
-
-    [Fact] // Can run in parallel with any other test
-    public void IndependentTest() { }
-}
-```
+Every test runs in parallel by default, and tests are randomly permuted on each run to surface accidental ordering dependencies. Control this with `TestExecutionOptions.Mode` (`ParallelMode.Tests` by default, or `ParallelMode.Classes` to run classes in parallel while keeping the tests within a class sequential, or `ParallelMode.None` to run everything sequentially) and `TestExecutionOptions.MaxDegreeOfParallelism`.
 
 ### Exception Handling
 
@@ -511,7 +426,7 @@ public void TestWithOutput(ITestContext context)
 
 ```csharp
 [assembly: UXUnitConfiguration(
-    ParallelExecution = true,
+    Mode = ParallelMode.Tests,
     MaxDegreeOfParallelism = 4,
     DefaultTimeout = 30000,
     StopOnFirstFailure = false
@@ -581,7 +496,7 @@ public class DatabaseTestAttribute : Attribute, ITestMethodAttribute
 | `[Theory]` + `[InlineData]` | `[Theory]` + `[InlineData]` |
 | `[ClassData]` | `[TestDataSource]` |
 | `IClassFixture<T>` | Constructor injection |
-| `ICollectionFixture<T>` | `[ClassSetup]`/`[ClassCleanup]` |
+| `ICollectionFixture<T>` | Not supported |
 | `[Skip]` | `Skip = true` property |
 
 ### Code Examples
@@ -610,7 +525,6 @@ public class CalculatorTests
 
 **UXUnit:**
 ```csharp
-[TestClass]
 public class CalculatorTests
 {
     [Fact]

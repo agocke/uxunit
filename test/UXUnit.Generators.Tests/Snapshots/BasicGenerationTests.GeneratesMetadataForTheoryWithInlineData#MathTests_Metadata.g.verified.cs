@@ -17,7 +17,22 @@ namespace UXUnit.Generated
             new TestClassMetadata
             {
                 ClassName = "MathTests",
-                AssemblyName = "GeneratesMetadataForTheoryWithInlineData",
+                CreateInstance = () => new global::MathTests(),
+                TestDispatch = async (receiver, methodName, theoryArgs) =>
+                {
+                    switch (methodName)
+                    {
+                        case "AddTest":
+                        {
+                            var args = (global::System.ValueTuple<int, int, int>)theoryArgs!;
+                            ((global::MathTests)receiver!).AddTest(args.Item1, args.Item2, args.Item3);
+                            break;
+                        }
+                        default:
+                            throw new global::System.InvalidOperationException("Unknown test method: " + methodName);
+                    }
+                    await global::System.Threading.Tasks.Task.CompletedTask;
+                },
                 TestMethods = new TestMethodMetadata[]
                 {
                     new TestMethodMetadata.Theory
@@ -25,24 +40,19 @@ namespace UXUnit.Generated
                         MethodName = "AddTest",
                         IsAsync = false,
                         IsStatic = false,
-                        TestCases = new TestCaseMetadata[]
+                        TestCases = new TestCaseInfo[]
                         {
-                            new TestCaseMetadata
+                            new TestCaseInfo
                             {
-                                Arguments = new object?[] { 1, 2, 3 },
-                                DisplayName = "a: 1, b: 2, sum: 3"
+                                Arguments = (1, 2, 3),
+                                DisplayName = "a: 1, b: 2, sum: 3",
                             },
-                            new TestCaseMetadata
+                            new TestCaseInfo
                             {
-                                Arguments = new object?[] { 5, 7, 12 },
-                                DisplayName = "a: 5, b: 7, sum: 12"
+                                Arguments = (5, 7, 12),
+                                DisplayName = "a: 5, b: 7, sum: 12",
                             },
                         },
-                        ParameterizedBody = async (args, ct) =>
-                        {
-                            var instance = new MathTests();
-                            instance.AddTest((int)args[0]!, (int)args[1]!, (int)args[2]!);
-                        }
                     },
                 },
             };

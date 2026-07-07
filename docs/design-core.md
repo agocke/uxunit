@@ -116,20 +116,11 @@ public sealed class TestCaseMetadata
 
 ### Attributes
 
-Attributes are used to mark test classes and methods. These are recognized by the source generator.
+Attributes are used to mark test methods and data. Test classes are discovered automatically from methods marked with test attributes.
 
 #### Test Marking Attributes
 
 ```csharp
-[AttributeUsage(AttributeTargets.Class)]
-public sealed class TestClassAttribute : Attribute
-{
-    public string? DisplayName { get; set; }
-    public string? Category { get; set; }
-    public bool Skip { get; set; }
-    public string? SkipReason { get; set; }
-}
-
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class TestAttribute : Attribute
 {
@@ -168,12 +159,6 @@ public sealed class SetupAttribute : Attribute { }
 
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class CleanupAttribute : Attribute { }
-
-[AttributeUsage(AttributeTargets.Method)]
-public sealed class ClassSetupAttribute : Attribute { }
-
-[AttributeUsage(AttributeTargets.Method)]
-public sealed class ClassCleanupAttribute : Attribute { }
 ```
 
 ### Interfaces
@@ -223,13 +208,6 @@ public interface ITestMethodAttribute
     void OnBeforeTest(ITestContext context);
     void OnAfterTest(ITestContext context, TestResult result);
 }
-
-public interface ITestClassAttribute
-{
-    void OnBeforeClass(ITestContext context);
-    void OnAfterClass(ITestContext context, TestResult[] results);
-}
-
 public interface ITestDataSource
 {
     IEnumerable<object?[]> GetTestData(TestMethodMetadata methodMetadata);

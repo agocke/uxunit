@@ -167,13 +167,26 @@ public sealed class TestGenerator : IIncrementalGenerator
         TestClassWithMethods testClass)
     {
         var className = testClass.TestClass.ToDisplayString();
+        var fqName = "global::" + className;
+        var isClassStatic = testClass.TestClass.IsStatic;
 
         builder.AppendLine("return ");
         builder.AppendLine("new TestClassMetadata");
         builder.AppendLine("{");
         builder.Indent();
         builder.AppendLine($"ClassName = \"{className}\",");
-        builder.AppendLine($"AssemblyName = \"{testClass.TestClass.ContainingAssembly.Name}\",");
+
+        if (isClassStatic)
+        {
+            builder.AppendLine("CreateInstance = () => null,");
+        }
+        else
+        {
+            builder.AppendLine($"CreateInstance = () => new {fqName}(),");
+        }
+
+        GenerateDispatch(builder, testClass, fqName);
+
         builder.AppendLine("TestMethods = new TestMethodMetadata[]");
         builder.AppendLine("{");
         builder.Indent();
@@ -196,6 +209,87 @@ public sealed class TestGenerator : IIncrementalGenerator
         builder.AppendLine("};");
     }
 
+    private static void GenerateDispatch(
+        IndentingBuilder builder,
+        TestClassWithMethods testClass,
+        string fqName)
+    {
+        builder.AppendLine("TestDispatch = async (receiver, methodName, theoryArgs) =>");
+        builder.AppendLine("{");
+        builder.Indent();
+        builder.AppendLine("switch (methodName)");
+        builder.AppendLine("{");
+        builder.Indent();
+
+        foreach (var method in testClass.Methods)
+        {
+            builder.AppendLine($"case \"{method.MethodSymbol.Name}\":");
+            builder.AppendLine("{");
+            builder.Indent();
+            GenerateInvocation(builder, method, fqName);
+            builder.AppendLine("break;");
+            builder.Dedent();
+            builder.AppendLine("}");
+        }
+
+        builder.AppendLine("default:");
+        builder.Indent();
+        builder.AppendLine(
+            "throw new global::System.InvalidOperationException(\"Unknown test method: \" + methodName);");
+        builder.Dedent();
+
+        builder.Dedent();
+        builder.AppendLine("}");
+        builder.AppendLine("await global::System.Threading.Tasks.Task.CompletedTask;");
+        builder.Dedent();
+        builder.AppendLine("},");
+    }
+
+    private static void GenerateInvocation(
+        IndentingBuilder builder,
+        TestMethodInfo method,
+        string fqName)
+    {
+        var methodName = method.MethodSymbol.Name;
+        var isAsync = IsAsyncMethod(method.MethodSymbol);
+        var isStatic = method.MethodSymbol.IsStatic;
+        var parameters = method.MethodSymbol.Parameters;
+
+        var target = isStatic ? fqName : $"(({fqName})receiver!)";
+
+        var argList = "";
+        if (parameters.Length == 1)
+        {
+            // Single argument is boxed directly (no ValueTuple wrapper).
+            argList = $"({parameters[0].Type.ToDisplayString()})theoryArgs!";
+        }
+        else if (parameters.Length > 1)
+        {
+            // Cast straight to the concrete tuple type so arguments are strongly
+            // typed (no per-element unboxing cast via ITuple's object indexer).
+            builder.AppendLine($"var args = ({BuildValueTupleType(parameters)})theoryArgs!;");
+
+            var sb = new StringBuilder();
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                if (i > 0)
+                    sb.Append(", ");
+
+                sb.Append($"args.Item{i + 1}");
+            }
+            argList = sb.ToString();
+        }
+
+        var awaitKeyword = isAsync ? "await " : "";
+        builder.AppendLine($"{awaitKeyword}{target}.{methodName}({argList});");
+    }
+
+    private static string BuildValueTupleType(ImmutableArray<IParameterSymbol> parameters)
+    {
+        var types = parameters.Select(p => p.Type.ToDisplayString());
+        return $"global::System.ValueTuple<{string.Join(", ", types)}>";
+    }
+
     private static void GenerateFactMetadata(
         IndentingBuilder builder,
         TestMethodInfo method)
@@ -203,8 +297,6 @@ public sealed class TestGenerator : IIncrementalGenerator
         var methodName = method.MethodSymbol.Name;
         var isAsync = IsAsyncMethod(method.MethodSymbol);
         var isStatic = method.MethodSymbol.IsStatic;
-        var containingTypeName = method.ContainingClass.ToDisplayString();
-        var implementsIDisposable = ImplementsIDisposable(method.ContainingClass);
 
         builder.AppendLine("new TestMethodMetadata.Fact");
         builder.AppendLine("{");
@@ -212,40 +304,6 @@ public sealed class TestGenerator : IIncrementalGenerator
         builder.AppendLine($"MethodName = \"{methodName}\",");
         builder.AppendLine($"IsAsync = {(isAsync ? "true" : "false")},");
         builder.AppendLine($"IsStatic = {(isStatic ? "true" : "false")},");
-        builder.AppendLine("Body = async (ct) =>");
-        builder.AppendLine("{");
-        builder.Indent();
-
-        if (isStatic)
-        {
-            if (isAsync)
-            {
-                builder.AppendLine($"await {containingTypeName}.{methodName}();");
-            }
-            else
-            {
-                builder.AppendLine($"{containingTypeName}.{methodName}();");
-            }
-        }
-        else
-        {
-            builder.AppendLine($"var instance = new {containingTypeName}();");
-            if (isAsync)
-            {
-                builder.AppendLine($"await instance.{methodName}();");
-            }
-            else
-            {
-                builder.AppendLine($"instance.{methodName}();");
-            }
-            if (implementsIDisposable)
-            {
-                builder.AppendLine("((IDisposable)instance).Dispose();");
-            }
-        }
-
-        builder.Dedent();
-        builder.AppendLine("}");
         builder.Dedent();
         builder.AppendLine("},");
     }
@@ -257,8 +315,6 @@ public sealed class TestGenerator : IIncrementalGenerator
         var methodName = method.MethodSymbol.Name;
         var isAsync = IsAsyncMethod(method.MethodSymbol);
         var isStatic = method.MethodSymbol.IsStatic;
-        var containingTypeName = method.ContainingClass.ToDisplayString();
-        var implementsIDisposable = ImplementsIDisposable(method.ContainingClass);
         var parameters = method.MethodSymbol.Parameters;
 
         builder.AppendLine("new TestMethodMetadata.Theory");
@@ -267,18 +323,25 @@ public sealed class TestGenerator : IIncrementalGenerator
         builder.AppendLine($"MethodName = \"{methodName}\",");
         builder.AppendLine($"IsAsync = {(isAsync ? "true" : "false")},");
         builder.AppendLine($"IsStatic = {(isStatic ? "true" : "false")},");
-        builder.AppendLine("TestCases = new TestCaseMetadata[]");
+        builder.AppendLine("TestCases = new TestCaseInfo[]");
         builder.AppendLine("{");
         builder.Indent();
 
         foreach (var testCase in method.InlineDataCases)
         {
-            builder.AppendLine("new TestCaseMetadata");
+            builder.AppendLine("new TestCaseInfo");
             builder.AppendLine("{");
             builder.Indent();
 
-            var args = testCase.Arguments.Select(FormatConstantValue);
-            builder.AppendLine($"Arguments = new object?[] {{ {string.Join(", ", args)} }},");
+            var args = testCase.Arguments.Select(FormatConstantValue).ToList();
+            // 1 arg: box the value directly. 2+ args: tuple literal. 0 args: null.
+            var arguments = args.Count switch
+            {
+                0 => "null",
+                1 => args[0],
+                _ => $"({string.Join(", ", args)})",
+            };
+            builder.AppendLine($"Arguments = {arguments},");
 
             // Generate DisplayName with parameter names and values (e.g., "a: 1, b: 2, expected: 3")
             var displayNameParts = new List<string>();
@@ -289,7 +352,7 @@ public sealed class TestGenerator : IIncrementalGenerator
                 displayNameParts.Add($"{paramName}: {paramValue}");
             }
             var displayName = EscapeString(string.Join(", ", displayNameParts));
-            builder.AppendLine($"DisplayName = \"{displayName}\"");
+            builder.AppendLine($"DisplayName = \"{displayName}\",");
 
             builder.Dedent();
             builder.AppendLine("},");
@@ -297,63 +360,8 @@ public sealed class TestGenerator : IIncrementalGenerator
 
         builder.Dedent();
         builder.AppendLine("},");
-        builder.AppendLine("ParameterizedBody = async (args, ct) =>");
-        builder.AppendLine("{");
-        builder.Indent();
-
-        if (isStatic)
-        {
-            var methodCall = GenerateMethodCall(containingTypeName, methodName, parameters, isAsync);
-            builder.AppendLine(methodCall);
-        }
-        else
-        {
-            builder.AppendLine($"var instance = new {containingTypeName}();");
-            var methodCall = GenerateMethodCall("instance", methodName, parameters, isAsync);
-            builder.AppendLine(methodCall);
-            if (implementsIDisposable)
-            {
-                builder.AppendLine("((IDisposable)instance).Dispose();");
-            }
-        }
-
-        builder.Dedent();
-        builder.AppendLine("}");
         builder.Dedent();
         builder.AppendLine("},");
-    }
-
-    private static string GenerateMethodCall(
-        string target,
-        string methodName,
-        ImmutableArray<IParameterSymbol> parameters,
-        bool isAsync)
-    {
-        var sb = new StringBuilder();
-
-        if (isAsync)
-        {
-            sb.Append("await ");
-        }
-
-        sb.Append(target);
-        sb.Append('.');
-        sb.Append(methodName);
-        sb.Append('(');
-
-        for (int i = 0; i < parameters.Length; i++)
-        {
-            if (i > 0)
-                sb.Append(", ");
-
-            var param = parameters[i];
-            var typeName = param.Type.ToDisplayString();
-
-            sb.Append($"({typeName})args[{i}]!");
-        }
-
-        sb.Append(");");
-        return sb.ToString();
     }
 
     private static void GenerateTestRegistry(
@@ -401,12 +409,6 @@ public sealed class TestGenerator : IIncrementalGenerator
     private static bool IsAsyncMethod(IMethodSymbol method)
     {
         return method.ReturnType.Name == "Task" || method.ReturnType.Name == "ValueTask";
-    }
-
-    private static bool ImplementsIDisposable(INamedTypeSymbol type)
-    {
-        return type.AllInterfaces.Any(i =>
-            i.ToDisplayString() == "System.IDisposable");
     }
 
     private static string GetSafeClassName(INamedTypeSymbol type)

@@ -1,5 +1,6 @@
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Testing.Extensions;
@@ -115,56 +116,112 @@ public sealed class TestFramework : ITestFramework, IDataProducer
             context.CancellationToken
         ).Token;
 
-        var testMethods = TestExecutionEngine.CollectAllTests(_testClasses);
+        var tests = TestExecutionEngine.CollectAllTests(_testClasses);
 
-        await Parallel.ForEachAsync(
-            testMethods,
-            new ParallelOptions
-            {
-                MaxDegreeOfParallelism = _options.MaxDegreeOfParallelism,
-                CancellationToken = linkedCt,
-            },
-            async (test, ct) =>
-            {
-                var result = await TestExecutionEngine.ExecuteTestAsync(test, _options, ct);
+        switch (_options.Mode)
+        {
+            case ParallelMode.None:
+                foreach (var test in tests)
+                {
+                    if (linkedCt.IsCancellationRequested)
+                        break;
 
-                if (_options.StopOnFirstFailure && result.Status == TestStatus.Failed)
-                    stopCts.Cancel();
+                    await RunAndPublishAsync(context, test, stopCts, linkedCt);
+                }
+                break;
 
-                await PublishTestResultAsync(context, result);
-            }
-        );
+            case ParallelMode.Classes:
+                var classGroups = tests.GroupBy(t => t.ClassName, StringComparer.Ordinal);
+
+                await Parallel.ForEachAsync(
+                    classGroups,
+                    new ParallelOptions
+                    {
+                        MaxDegreeOfParallelism = _options.MaxDegreeOfParallelism,
+                        CancellationToken = linkedCt,
+                    },
+                    async (group, ct) =>
+                    {
+                        foreach (var test in group)
+                        {
+                            if (ct.IsCancellationRequested)
+                                break;
+
+                            await RunAndPublishAsync(context, test, stopCts, ct);
+                        }
+                    }
+                );
+                break;
+
+            default: // ParallelMode.Tests
+                await Parallel.ForEachAsync(
+                    tests,
+                    new ParallelOptions
+                    {
+                        MaxDegreeOfParallelism = _options.MaxDegreeOfParallelism,
+                        CancellationToken = linkedCt,
+                    },
+                    async (test, ct) => await RunAndPublishAsync(context, test, stopCts, ct)
+                );
+                break;
+        }
     }
 
-    private async Task PublishTestResultAsync(ExecuteRequestContext context, TestResult result)
+    private async Task RunAndPublishAsync(
+        ExecuteRequestContext context,
+        TestExecutionEngine.TestDescriptor test,
+        CancellationTokenSource stopCts,
+        CancellationToken ct
+    )
     {
-        var testfqn = $"{result.ClassDisplayName ?? result.ClassName}.{result.TestName}";
-        TestNode testNode = result.Status switch
+        var results = await TestExecutionEngine.ExecuteTestAsync(test, _options, ct);
+
+        if (_options.StopOnFirstFailure && results.Any(r => r.Status == TestStatus.Failed))
+            stopCts.Cancel();
+
+        await PublishTestResultsAsync(context, results);
+    }
+
+    private async Task PublishTestResultsAsync(ExecuteRequestContext context, TestResult[] results)
+    {
+        foreach (var result in results)
         {
-            TestStatus.Skipped => new TestNode()
+            var testfqn = $"{result.ClassDisplayName ?? result.ClassName}.{result.TestName}";
+            TestNode testNode = result.Status switch
             {
-                Uid = testfqn,
-                DisplayName = testfqn,
-                Properties = new PropertyBag(new SkippedTestNodeStateProperty(result.SkipReason ?? ""))
-            },
-            TestStatus.Passed => new TestNode()
-            {
-                Uid = testfqn,
-                DisplayName = testfqn,
-                Properties = new PropertyBag(new PassedTestNodeStateProperty())
-            },
-            TestStatus.Failed => new TestNode()
-            {
-                Uid = testfqn,
-                DisplayName = testfqn,
-                Properties = new PropertyBag(
-                    new FailedTestNodeStateProperty(result.ErrorMessage!),
-                    new TrxExceptionProperty(result.ErrorMessage, result.StackTrace)
-                )
-            },
-            _ => throw new InvalidOperationException($"Unknown test status {result.Status}")
-        };
-        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(context.Request.Session.SessionUid, testNode));
+                TestStatus.Skipped => new TestNode()
+                {
+                    Uid = testfqn,
+                    DisplayName = testfqn,
+                    Properties = new PropertyBag(new SkippedTestNodeStateProperty(result.SkipReason ?? ""))
+                },
+                TestStatus.Passed => new TestNode()
+                {
+                    Uid = testfqn,
+                    DisplayName = testfqn,
+                    Properties = new PropertyBag(new PassedTestNodeStateProperty())
+                },
+                TestStatus.Failed => new TestNode()
+                {
+                    Uid = testfqn,
+                    DisplayName = testfqn,
+                    Properties = new PropertyBag(
+                        new FailedTestNodeStateProperty(result.ErrorMessage!),
+                        new TrxExceptionProperty(result.ErrorMessage, result.StackTrace)
+                    )
+                },
+                TestStatus.Faulted => new TestNode()
+                {
+                    Uid = testfqn,
+                    DisplayName = testfqn,
+                    Properties = new PropertyBag(
+                        new ErrorTestNodeStateProperty(result.ErrorMessage ?? "Test infrastructure fault"),
+                        new TrxExceptionProperty(result.ErrorMessage, result.StackTrace)
+                    )
+                }
+            };
+            await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(context.Request.Session.SessionUid, testNode));
+        }
     }
 
     public async Task<bool> IsEnabledAsync() => true;

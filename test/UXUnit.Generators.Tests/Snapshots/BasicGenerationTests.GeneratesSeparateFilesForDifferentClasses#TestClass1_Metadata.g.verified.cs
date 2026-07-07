@@ -17,7 +17,21 @@ namespace UXUnit.Generated
             new TestClassMetadata
             {
                 ClassName = "TestClass1",
-                AssemblyName = "GeneratesSeparateFilesForDifferentClasses",
+                CreateInstance = () => new global::TestClass1(),
+                TestDispatch = async (receiver, methodName, theoryArgs) =>
+                {
+                    switch (methodName)
+                    {
+                        case "Test1":
+                        {
+                            ((global::TestClass1)receiver!).Test1();
+                            break;
+                        }
+                        default:
+                            throw new global::System.InvalidOperationException("Unknown test method: " + methodName);
+                    }
+                    await global::System.Threading.Tasks.Task.CompletedTask;
+                },
                 TestMethods = new TestMethodMetadata[]
                 {
                     new TestMethodMetadata.Fact
@@ -25,11 +39,6 @@ namespace UXUnit.Generated
                         MethodName = "Test1",
                         IsAsync = false,
                         IsStatic = false,
-                        Body = async (ct) =>
-                        {
-                            var instance = new TestClass1();
-                            instance.Test1();
-                        }
                     },
                 },
             };

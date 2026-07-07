@@ -24,7 +24,7 @@ public sealed class TestAssemblyMetadata
 
 public sealed class AssemblyConfiguration
 {
-    public bool ParallelExecution { get; init; } = true;
+    public ParallelMode Mode { get; init; } = ParallelMode.Tests;
     public int MaxDegreeOfParallelism { get; init; } = Environment.ProcessorCount;
     public int DefaultTimeoutMs { get; init; } = 0; // No timeout
     public bool StopOnFirstFailure { get; init; } = false;
@@ -44,27 +44,11 @@ public sealed class TestClassMetadata
     public string? Category { get; init; }
     public bool Skip { get; init; }
     public string? SkipReason { get; init; }
-    public ParallelConfiguration ParallelConfig { get; init; } = new();
     public IReadOnlyList<TestMethodMetadata> TestMethods { get; init; } = Array.Empty<TestMethodMetadata>();
     public IReadOnlyList<LifecycleMethodMetadata> SetupMethods { get; init; } = Array.Empty<LifecycleMethodMetadata>();
     public IReadOnlyList<LifecycleMethodMetadata> CleanupMethods { get; init; } = Array.Empty<LifecycleMethodMetadata>();
-    public IReadOnlyList<LifecycleMethodMetadata> ClassSetupMethods { get; init; } = Array.Empty<LifecycleMethodMetadata>();
-    public IReadOnlyList<LifecycleMethodMetadata> ClassCleanupMethods { get; init; } = Array.Empty<LifecycleMethodMetadata>();
     public IReadOnlyDictionary<string, object?> Properties { get; init; } = new Dictionary<string, object?>();
     public TypeInfo ClassType { get; init; } = default!;
-}
-
-public sealed class ParallelConfiguration
-{
-    public ParallelExecution Execution { get; init; } = ParallelExecution.Enabled;
-    public string? Group { get; init; }
-}
-
-public enum ParallelExecution
-{
-    Enabled,
-    Disabled,
-    Required
 }
 ```
 
@@ -81,7 +65,6 @@ public sealed class TestMethodMetadata
     public string? SkipReason { get; init; }
     public int TimeoutMs { get; init; } = 0;
     public Type? ExpectedExceptionType { get; init; }
-    public ParallelConfiguration ParallelConfig { get; init; } = new();
     public RetryConfiguration RetryConfig { get; init; } = new();
     public IReadOnlyList<TestCaseMetadata> TestCases { get; init; } = Array.Empty<TestCaseMetadata>();
     public IReadOnlyList<CustomAttributeMetadata> CustomAttributes { get; init; } = Array.Empty<CustomAttributeMetadata>();
@@ -130,9 +113,7 @@ public sealed class LifecycleMethodMetadata
 public enum LifecycleMethodType
 {
     Setup,
-    Cleanup,
-    ClassSetup,
-    ClassCleanup
+    Cleanup
 }
 ```
 
@@ -382,17 +363,11 @@ public sealed class TestRunConfiguration
 {
     public TestAssemblyMetadata Assembly { get; init; } = default!;
     public TestFilter Filter { get; init; } = TestFilter.All;
-    public ParallelExecutionSettings ParallelSettings { get; init; } = new();
+    public ParallelMode Mode { get; init; } = ParallelMode.Tests;
+    public int MaxDegreeOfParallelism { get; init; } = Environment.ProcessorCount;
     public ITestOutput Output { get; init; } = NullTestOutput.Instance;
     public bool StopOnFirstFailure { get; init; } = false;
     public TimeSpan? GlobalTimeout { get; init; }
-}
-
-public sealed class ParallelExecutionSettings
-{
-    public bool Enabled { get; init; } = true;
-    public int MaxDegreeOfParallelism { get; init; } = Environment.ProcessorCount;
-    public TaskScheduler? TaskScheduler { get; init; }
 }
 ```
 

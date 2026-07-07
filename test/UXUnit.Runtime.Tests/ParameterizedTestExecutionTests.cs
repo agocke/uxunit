@@ -18,25 +18,27 @@ public class ParameterizedTestExecutionTests
     {
         // Arrange: A theory-style test with one test case
         var executionCount = 0;
-        var capturedArgs = new object?[0];
 
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TheoryTestClass",
-            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Theory
                 {
                     MethodName = "AddTest",
-                    TestCases = [new TestCaseMetadata { Arguments = [2, 3, 5] }],
-                    ParameterizedBody = async (args, ct) =>
-                    {
-                        executionCount++;
-                        await Task.CompletedTask;
-                    },
+                    TestCases =
+                    [
+                        new TestCaseInfo { Arguments = (2, 3, 5), DisplayName = "2 + 3 = 5" },
+                    ],
                 },
             ],
+            CreateInstance = () => null,
+            TestDispatch = (_, _, _) =>
+            {
+                executionCount++;
+                return Task.CompletedTask;
+            },
         };
 
         var options = TestExecutionOptions.Default;
@@ -59,7 +61,6 @@ public class ParameterizedTestExecutionTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TheoryTestClass",
-            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Theory
@@ -67,17 +68,18 @@ public class ParameterizedTestExecutionTests
                     MethodName = "AddTest",
                     TestCases =
                     [
-                        new TestCaseMetadata { Arguments = [1, 2, 3] },
-                        new TestCaseMetadata { Arguments = [5, 7, 12] },
-                        new TestCaseMetadata { Arguments = [-1, 1, 0] },
+                        new TestCaseInfo { Arguments = (1, 2, 3), DisplayName = "1 + 2 = 3" },
+                        new TestCaseInfo { Arguments = (5, 7, 12), DisplayName = "5 + 7 = 12" },
+                        new TestCaseInfo { Arguments = (-1, 1, 0), DisplayName = "-1 + 1 = 0" },
                     ],
-                    ParameterizedBody = async (args, ct) =>
-                    {
-                        executionCount++;
-                        await Task.CompletedTask;
-                    },
                 },
             ],
+            CreateInstance = () => null,
+            TestDispatch = (_, _, _) =>
+            {
+                executionCount++;
+                return Task.CompletedTask;
+            },
         };
 
         var options = TestExecutionOptions.Default;
@@ -94,13 +96,12 @@ public class ParameterizedTestExecutionTests
     [XunitFact]
     public async Task ExecuteTestsAsync_WithTestCaseArguments_PassesArgumentsToDelegate()
     {
-        // Arrange: Test that verifies arguments are passed correctly
-        var capturedArguments = new System.Collections.Generic.List<object?[]>();
+        // Arrange: Test that verifies arguments are passed to the dispatch delegate
+        var capturedArguments = new System.Collections.Generic.List<object?>();
 
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TheoryTestClass",
-            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Theory
@@ -108,17 +109,17 @@ public class ParameterizedTestExecutionTests
                     MethodName = "AddTest",
                     TestCases =
                     [
-                        new TestCaseMetadata { Arguments = [2, 3, 5] },
-                        new TestCaseMetadata { Arguments = [10, 20, 30] },
+                        new TestCaseInfo { Arguments = (2, 3, 5), DisplayName = "2 + 3 = 5" },
+                        new TestCaseInfo { Arguments = (10, 20, 30), DisplayName = "10 + 20 = 30" },
                     ],
-                    ParameterizedBody = async (args, ct) =>
-                    {
-                        // In the real implementation, the delegate would receive arguments
-                        // For now, we just verify execution happens
-                        await Task.CompletedTask;
-                    },
                 },
             ],
+            CreateInstance = () => null,
+            TestDispatch = (_, _, theoryArgs) =>
+            {
+                capturedArguments.Add(theoryArgs);
+                return Task.CompletedTask;
+            },
         };
 
         var options = TestExecutionOptions.Default;
@@ -128,6 +129,8 @@ public class ParameterizedTestExecutionTests
 
         // Assert
         XunitAssert.Equal(2, results.Length);
+        XunitAssert.Equal(2, capturedArguments.Count);
+        XunitAssert.All(capturedArguments, a => XunitAssert.NotNull(a));
     }
 
     [XunitFact]
@@ -139,7 +142,6 @@ public class ParameterizedTestExecutionTests
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TheoryTestClass",
-            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Theory
@@ -147,21 +149,22 @@ public class ParameterizedTestExecutionTests
                     MethodName = "AddTest",
                     TestCases =
                     [
-                        new TestCaseMetadata { Arguments = [1, 2, 3] },
-                        new TestCaseMetadata { Arguments = [5, 5, 11] }, // This one will "fail"
-                        new TestCaseMetadata { Arguments = [0, 0, 0] },
+                        new TestCaseInfo { Arguments = (1, 2, 3), DisplayName = "case 1" },
+                        new TestCaseInfo { Arguments = (5, 5, 11), DisplayName = "case 2" },
+                        new TestCaseInfo { Arguments = (0, 0, 0), DisplayName = "case 3" },
                     ],
-                    ParameterizedBody = async (args, ct) =>
-                    {
-                        executionCount++;
-                        if (executionCount == 2)
-                        {
-                            throw new InvalidOperationException("Test case failed");
-                        }
-                        await Task.CompletedTask;
-                    },
                 },
             ],
+            CreateInstance = () => null,
+            TestDispatch = (_, _, _) =>
+            {
+                executionCount++;
+                if (executionCount == 2)
+                {
+                    throw new InvalidOperationException("Test case failed");
+                }
+                return Task.CompletedTask;
+            },
         };
 
         var options = TestExecutionOptions.Default;
@@ -176,59 +179,12 @@ public class ParameterizedTestExecutionTests
     }
 
     [XunitFact]
-    public async Task ExecuteTestsAsync_WithSkippedTestCase_SkipsThatCase()
-    {
-        // Arrange: Theory test with a skipped case
-        var testMetadata = new TestClassMetadata
-        {
-            ClassName = "TheoryTestClass",
-            AssemblyName = "TestAssembly",
-            TestMethods =
-            [
-                new TestMethodMetadata.Theory
-                {
-                    MethodName = "AddTest",
-                    TestCases =
-                    [
-                        new TestCaseMetadata { Arguments = [1, 2, 3] },
-                        new TestCaseMetadata
-                        {
-                            Arguments = [5, 5, 10],
-                            Skip = true,
-                            SkipReason = "Known issue",
-                        },
-                        new TestCaseMetadata { Arguments = [0, 0, 0] },
-                    ],
-                    ParameterizedBody = async (args, ct) =>
-                    {
-                        await Task.CompletedTask;
-                    },
-                },
-            ],
-        };
-
-        var options = TestExecutionOptions.Default;
-
-        // Act
-        var results = await TestExecutionEngine.ExecuteTestsAsync([testMetadata], options);
-
-        // Assert
-        XunitAssert.Equal(3, results.Length);
-        XunitAssert.Equal(2, results.Count(r => r.Status == TestStatus.Passed));
-        XunitAssert.Single(results, r => r.Status == TestStatus.Skipped);
-
-        var skippedResult = results.Single(r => r.Status == TestStatus.Skipped);
-        XunitAssert.Equal("Known issue", skippedResult.SkipReason);
-    }
-
-    [XunitFact]
     public async Task ExecuteTestsAsync_WithTestCaseDisplayNames_UsesDisplayNameInResult()
     {
         // Arrange: Test cases with custom display names
         var testMetadata = new TestClassMetadata
         {
             ClassName = "TheoryTestClass",
-            AssemblyName = "TestAssembly",
             TestMethods =
             [
                 new TestMethodMetadata.Theory
@@ -236,19 +192,13 @@ public class ParameterizedTestExecutionTests
                     MethodName = "AddTest",
                     TestCases =
                     [
-                        new TestCaseMetadata { Arguments = [2, 3, 5], DisplayName = "2 + 3 = 5" },
-                        new TestCaseMetadata
-                        {
-                            Arguments = [10, 20, 30],
-                            DisplayName = "10 + 20 = 30",
-                        },
+                        new TestCaseInfo { Arguments = (2, 3, 5), DisplayName = "2 + 3 = 5" },
+                        new TestCaseInfo { Arguments = (10, 20, 30), DisplayName = "10 + 20 = 30" },
                     ],
-                    ParameterizedBody = async (args, ct) =>
-                    {
-                        await Task.CompletedTask;
-                    },
                 },
             ],
+            CreateInstance = () => null,
+            TestDispatch = (_, _, _) => Task.CompletedTask,
         };
 
         var options = TestExecutionOptions.Default;
@@ -258,33 +208,28 @@ public class ParameterizedTestExecutionTests
 
         // Assert
         XunitAssert.Equal(2, results.Length);
-        // Note: The actual implementation should include display names in TestResult
-        // This is a placeholder assertion until that's implemented
         XunitAssert.All(results, r => XunitAssert.NotNull(r.TestName));
     }
 
     [XunitFact]
     public async Task ExecuteTestsAsync_WithNoTestCases_ExecutesMethodOnce()
     {
-        // Arrange: A method with no TestCases should execute once (like a Fact)
+        // Arrange: A Fact should execute once
         var executionCount = 0;
 
         var testMetadata = new TestClassMetadata
         {
             ClassName = "SimpleTestClass",
-            AssemblyName = "TestAssembly",
             TestMethods =
             [
-                new TestMethodMetadata.Fact
-                {
-                    MethodName = "SimpleTest",
-                    Body = async (ct) =>
-                    {
-                        executionCount++;
-                        await Task.CompletedTask;
-                    },
-                },
+                new TestMethodMetadata.Fact { MethodName = "SimpleTest" },
             ],
+            CreateInstance = () => null,
+            TestDispatch = (_, _, _) =>
+            {
+                executionCount++;
+                return Task.CompletedTask;
+            },
         };
 
         var options = TestExecutionOptions.Default;

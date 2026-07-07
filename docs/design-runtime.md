@@ -9,7 +9,7 @@ UXUnit.Runtime is the execution engine that runs generated test code. It's **not
 1. **Simple Function**: Transform test metadata into test results
 2. **No Abstractions**: No ITestRunner, ITestClassRunner interfaces
 3. **Separation of Concerns**: Execution is separate from presentation
-4. **Performance**: Minimal overhead, efficient parallel execution
+4. **Lightweight**: Minimal overhead, efficient parallel execution
 5. **Stateless**: No global state, pure functional approach where possible
 
 ## Core Architecture
@@ -54,20 +54,19 @@ public static class TestExecutionEngine
     {
         var allTests = CollectAllTests(testClasses);
 
-        if (options.ParallelExecution)
+        return options.Mode switch
         {
-            return await ExecuteInParallelAsync(allTests, options, cancellationToken);
-        }
-        else
-        {
-            return await ExecuteSequentiallyAsync(allTests, options, cancellationToken);
-        }
+            ParallelMode.None => await ExecuteSequentiallyAsync(allTests, options, cancellationToken),
+            ParallelMode.Classes => await ExecuteClassesInParallelAsync(allTests, options, cancellationToken),
+            _ => await ExecuteTestsInParallelAsync(allTests, options, cancellationToken),
+        };
     }
 
     private static List<TestDescriptor> CollectAllTests(
         IReadOnlyList<TestClassMetadata> testClasses)
     {
-        // Flatten all test methods from all classes
+        // Flatten all test methods from all classes, then randomly permute them
+        // on each run to surface accidental ordering dependencies.
         // Each TestDescriptor contains:
         // - Metadata (name, timeout, etc.)
         // - Execution delegate (Func<CancellationToken, Task<TestResult>>)
@@ -92,13 +91,19 @@ public static class TestExecutionEngine
 Configuration for test execution:
 
 ```csharp
+public enum ParallelMode
+{
+    None,     // everything runs sequentially
+    Classes,  // classes run in parallel; tests within a class run sequentially
+    Tests,    // individual tests run in parallel, regardless of class (default)
+}
+
 public sealed class TestExecutionOptions
 {
-    public bool ParallelExecution { get; init; } = true;
+    public ParallelMode Mode { get; init; } = ParallelMode.Tests;
     public int MaxDegreeOfParallelism { get; init; } = Environment.ProcessorCount;
     public bool StopOnFirstFailure { get; init; } = false;
     public TimeSpan? GlobalTimeout { get; init; }
-    public ITestOutputSink? OutputSink { get; init; }
 }
 ```
 
