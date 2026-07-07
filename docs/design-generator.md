@@ -2,7 +2,7 @@
 
 ## Overview
 
-UXUnit.Generators is a Roslyn source generator that analyzes test code at compile time and generates optimized test execution code. This eliminates runtime reflection, enables compile-time validation, and produces highly optimized test runners.
+UXUnit.Generators is a Roslyn source generator that analyzes test code at compile time and generates test execution code. This eliminates runtime reflection, enables compile-time validation, and produces simple, direct test runners.
 
 ## Design Principles
 
@@ -40,7 +40,7 @@ class TestClassSyntaxReceiver : ISyntaxReceiver
 
     public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
     {
-        // Find classes with [TestClass], [Fact], [Theory] attributes
+        // Find classes containing methods marked [Fact] or [Theory]
         if (syntaxNode is ClassDeclarationSyntax classDecl)
         {
             if (HasTestAttributes(classDecl))
@@ -392,7 +392,6 @@ The generator itself has comprehensive tests:
 public void GeneratesCorrectCode_ForSimpleTest()
 {
     var source = @"
-        [TestClass]
         public class MyTests
         {
             [Fact]

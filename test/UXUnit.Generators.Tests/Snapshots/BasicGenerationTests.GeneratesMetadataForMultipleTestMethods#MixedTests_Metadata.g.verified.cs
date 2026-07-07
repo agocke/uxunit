@@ -18,6 +18,31 @@ namespace UXUnit.Generated
             {
                 ClassName = "MixedTests",
                 AssemblyName = "GeneratesMetadataForMultipleTestMethods",
+                CreateInstance = () => new global::MixedTests(),
+                TestDispatch = async (receiver, methodName, theoryArgs) =>
+                {
+                    switch (methodName)
+                    {
+                        case "Test1":
+                        {
+                            ((global::MixedTests)receiver!).Test1();
+                            break;
+                        }
+                        case "Test2":
+                        {
+                            ((global::MixedTests)receiver!).Test2();
+                            break;
+                        }
+                        case "StringTest":
+                        {
+                            ((global::MixedTests)receiver!).StringTest((string)theoryArgs!);
+                            break;
+                        }
+                        default:
+                            throw new global::System.InvalidOperationException("Unknown test method: " + methodName);
+                    }
+                    await global::System.Threading.Tasks.Task.CompletedTask;
+                },
                 TestMethods = new TestMethodMetadata[]
                 {
                     new TestMethodMetadata.Fact
@@ -25,46 +50,31 @@ namespace UXUnit.Generated
                         MethodName = "Test1",
                         IsAsync = false,
                         IsStatic = false,
-                        Body = async (ct) =>
-                        {
-                            var instance = new MixedTests();
-                            instance.Test1();
-                        }
                     },
                     new TestMethodMetadata.Fact
                     {
                         MethodName = "Test2",
                         IsAsync = false,
                         IsStatic = false,
-                        Body = async (ct) =>
-                        {
-                            var instance = new MixedTests();
-                            instance.Test2();
-                        }
                     },
                     new TestMethodMetadata.Theory
                     {
                         MethodName = "StringTest",
                         IsAsync = false,
                         IsStatic = false,
-                        TestCases = new TestCaseMetadata[]
+                        TestCases = new TestCaseInfo[]
                         {
-                            new TestCaseMetadata
+                            new TestCaseInfo
                             {
-                                Arguments = new object?[] { "hello" },
-                                DisplayName = "input: \\\"hello\\\""
+                                Arguments = "hello",
+                                DisplayName = "input: \\\"hello\\\"",
                             },
-                            new TestCaseMetadata
+                            new TestCaseInfo
                             {
-                                Arguments = new object?[] { "world" },
-                                DisplayName = "input: \\\"world\\\""
+                                Arguments = "world",
+                                DisplayName = "input: \\\"world\\\"",
                             },
                         },
-                        ParameterizedBody = async (args, ct) =>
-                        {
-                            var instance = new MixedTests();
-                            instance.StringTest((string)args[0]!);
-                        }
                     },
                 },
             };

@@ -20,7 +20,7 @@ Add the following package references to your test project:
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="UXUnit.Assertions" Version="1.0.0" />
+    <PackageReference Include="xunit.v3.assert" Version="3.0.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
   </ItemGroup>
 
@@ -37,10 +37,7 @@ Add common usings to a `GlobalUsings.cs` file:
 
 ```csharp
 global using UXUnit;
-global using UXUnit.Assertions;
-global using static UXUnit.Assert;
-```
-global using static UXUnit.Assert;
+global using static Xunit.Assert;
 ```
 
 ## Your First Test

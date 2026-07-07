@@ -18,6 +18,21 @@ namespace UXUnit.Generated
             {
                 ClassName = "SimpleTests",
                 AssemblyName = "GeneratesMetadataForSimpleFact",
+                CreateInstance = () => new global::SimpleTests(),
+                TestDispatch = async (receiver, methodName, theoryArgs) =>
+                {
+                    switch (methodName)
+                    {
+                        case "PassingTest":
+                        {
+                            ((global::SimpleTests)receiver!).PassingTest();
+                            break;
+                        }
+                        default:
+                            throw new global::System.InvalidOperationException("Unknown test method: " + methodName);
+                    }
+                    await global::System.Threading.Tasks.Task.CompletedTask;
+                },
                 TestMethods = new TestMethodMetadata[]
                 {
                     new TestMethodMetadata.Fact
@@ -25,11 +40,6 @@ namespace UXUnit.Generated
                         MethodName = "PassingTest",
                         IsAsync = false,
                         IsStatic = false,
-                        Body = async (ct) =>
-                        {
-                            var instance = new SimpleTests();
-                            instance.PassingTest();
-                        }
                     },
                 },
             };

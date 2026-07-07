@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using StaticCs;
 
 namespace UXUnit;
 
 /// <summary>
 /// Represents the status of a test execution.
 /// </summary>
+[Closed]
 public enum TestStatus
 {
     /// <summary>
@@ -24,6 +27,11 @@ public enum TestStatus
     /// The test was skipped.
     /// </summary>
     Skipped,
+
+    /// <summary>
+    /// The test was not executed due to a fault in the test infrastructure.
+    /// </summary>
+    Faulted,
 }
 
 /// <summary>
@@ -51,8 +59,6 @@ public sealed class TestResult
     public TimeSpan Duration { get; init; }
 
     public string? ErrorMessage { get; init; }
-
-    public string? ErrorType { get; init; }
 
     public string? StackTrace { get; init; }
 
@@ -105,8 +111,30 @@ public sealed class TestResult
             Status = TestStatus.Failed,
             Duration = duration,
             ErrorMessage = exception.Message,
-            ErrorType = exception.GetType().FullName,
             StackTrace = exception.StackTrace,
+        };
+
+    /// <summary>
+    /// Represents a fault in the test infrastructure, such as an exception thrown during
+    /// test discovery or setup, rather than a failure of the test itself.
+    /// </summary>
+    public static TestResult Fault(
+        string testId,
+        string testName,
+        string errorMessage,
+        string? stackTrace,
+        string className,
+        string assemblyName
+    ) =>
+        new()
+        {
+            TestId = testId,
+            TestName = testName,
+            ClassName = className,
+            AssemblyName = assemblyName,
+            Status = TestStatus.Failed,
+            ErrorMessage = errorMessage,
+            StackTrace = stackTrace,
         };
 
     /// <summary>
@@ -149,6 +177,11 @@ public sealed class TestClassMetadata
 
     public IReadOnlyList<TestMethodMetadata> TestMethods { get; init; } =
         Array.Empty<TestMethodMetadata>();
+
+    public delegate Task DispatchFunc(object? receiver, string methodName, object? theoryArgs);
+
+    public required Func<object?> CreateInstance { get; init; }
+    public required DispatchFunc TestDispatch { get; init; }
 }
 
 /// <summary>
@@ -163,10 +196,6 @@ public abstract class TestMethodMetadata
     private TestMethodMetadata() { }
 
     public required string MethodName { get; init; }
-
-    public string? DisplayName { get; init; }
-
-    public string? Category { get; init; }
 
     public bool Skip { get; init; }
 
@@ -183,11 +212,6 @@ public abstract class TestMethodMetadata
     /// </summary>
     public sealed class Fact : TestMethodMetadata
     {
-        /// <summary>
-        /// Gets the test body delegate for this fact.
-        /// The delegate contains the actual test code.
-        /// </summary>
-        public Func<CancellationToken, Task>? Body { get; init; }
     }
 
     /// <summary>
@@ -196,30 +220,21 @@ public abstract class TestMethodMetadata
     public sealed class Theory : TestMethodMetadata
     {
         /// <summary>
-        /// Gets the test body delegate for this theory.
-        /// The delegate accepts arguments and contains the actual test code.
-        /// </summary>
-        public Func<object?[], CancellationToken, Task>? ParameterizedBody { get; init; }
-
-        /// <summary>
         /// Gets the test cases for this theory.
         /// Each test case provides arguments for one execution of the test.
         /// </summary>
-        public IReadOnlyList<TestCaseMetadata> TestCases { get; init; } =
-            Array.Empty<TestCaseMetadata>();
-    }
+        public IReadOnlyList<TestCaseInfo> TestCases { get; init; } =
+            Array.Empty<TestCaseInfo>();
+
+           }
 }
 
 /// <summary>
 /// Represents metadata for a test case (parameterized test data).
 /// </summary>
-public sealed class TestCaseMetadata
+public readonly struct TestCaseInfo
 {
-    public object?[] Arguments { get; init; } = Array.Empty<object?>();
+    public required object? Arguments { get; init; }
 
-    public string? DisplayName { get; init; }
-
-    public bool Skip { get; init; }
-
-    public string? SkipReason { get; init; }
+    public required string DisplayName { get; init; }
 }

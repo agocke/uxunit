@@ -14,8 +14,7 @@ class Program
 
         var options = new TestExecutionOptions
         {
-            MaxDegreeOfParallelism = 1, // Run sequentially for easier comparison with XUnit
-            ParallelExecution = false
+            Mode = ParallelMode.None, // Run sequentially for easier comparison with XUnit
         };
 
         return await TestFramework.RunAsync(args, allTests, options);

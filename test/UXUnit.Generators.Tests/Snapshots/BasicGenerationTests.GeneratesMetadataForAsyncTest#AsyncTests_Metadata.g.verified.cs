@@ -18,6 +18,21 @@ namespace UXUnit.Generated
             {
                 ClassName = "AsyncTests",
                 AssemblyName = "GeneratesMetadataForAsyncTest",
+                CreateInstance = () => new global::AsyncTests(),
+                TestDispatch = async (receiver, methodName, theoryArgs) =>
+                {
+                    switch (methodName)
+                    {
+                        case "AsyncPassingTest":
+                        {
+                            await ((global::AsyncTests)receiver!).AsyncPassingTest();
+                            break;
+                        }
+                        default:
+                            throw new global::System.InvalidOperationException("Unknown test method: " + methodName);
+                    }
+                    await global::System.Threading.Tasks.Task.CompletedTask;
+                },
                 TestMethods = new TestMethodMetadata[]
                 {
                     new TestMethodMetadata.Fact
@@ -25,11 +40,6 @@ namespace UXUnit.Generated
                         MethodName = "AsyncPassingTest",
                         IsAsync = true,
                         IsStatic = false,
-                        Body = async (ct) =>
-                        {
-                            var instance = new AsyncTests();
-                            await instance.AsyncPassingTest();
-                        }
                     },
                 },
             };

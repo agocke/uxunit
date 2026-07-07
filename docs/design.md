@@ -2,15 +2,15 @@
 
 ## Vision
 
-UXUnit is a next-generation unit testing framework for .NET that leverages source generators to provide compile-time test discovery, validation, and code generation. The framework aims to deliver superior performance, better developer experience, and enhanced reliability compared to traditional reflection-based testing frameworks.
+UXUnit is a small, simple unit testing framework for .NET that leverages source generators to provide compile-time test discovery, validation, and code generation. It aims to be an easy, drop-in replacement for the core of xUnit — covering the common testing scenarios without the size and complexity of a full-featured framework.
 
 ## Design Goals
 
 ### Primary Goals
-- **Performance**: Eliminate runtime reflection overhead through compile-time code generation
-- **Developer Experience**: Provide rich tooling support, clear error messages, and intuitive APIs
+- **Simplicity**: A small, focused framework with minimal boilerplate and configuration
+- **xUnit Familiarity**: Support the common xUnit patterns (`[Fact]`, `[Theory]`, `[InlineData]`) for an easy migration
 - **Reliability**: Catch test configuration errors at compile time rather than runtime
-- **Simplicity**: Minimize boilerplate code and configuration complexity
+- **No Runtime Reflection**: Discover and run tests via compile-time code generation
 - **Clean Architecture**: No unnecessary abstraction layers
 
 ### Non-Goals
@@ -74,13 +74,9 @@ See [Generator Design Document](./design-generator.md) for details.
 
 See [Runtime Design Document](./design-runtime.md) for details.
 
-#### UXUnit.Assertions
-**Purpose**: Assertion library
-**Fluent API for test assertions**
+#### Assertions
 
-- Equality, comparison, collection assertions
-- Exception assertions
-- Custom assertion extensibility
+UXUnit does not ship its own assertion library. Tests use `xunit.assert`, which keeps the framework small and eases migration from xUnit.
 
 ## Key Design Principles
 
@@ -124,7 +120,6 @@ instance.MyTestMethod();
 
 **User writes**:
 ```csharp
-[TestClass]
 public class CalculatorTests
 {
     [Fact]
