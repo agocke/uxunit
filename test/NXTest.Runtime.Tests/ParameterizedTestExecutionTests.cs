@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using XunitAssert = Xunit.Assert;
-using XunitFactAttribute = Xunit.FactAttribute;
 
 namespace NXTest.Runtime.Tests;
 
@@ -13,7 +12,7 @@ namespace NXTest.Runtime.Tests;
 /// </summary>
 public class ParameterizedTestExecutionTests
 {
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithSingleTestCase_ExecutesOnce()
     {
         // Arrange: A theory-style test with one test case
@@ -52,7 +51,7 @@ public class ParameterizedTestExecutionTests
         XunitAssert.Equal(TestStatus.Passed, results[0].Status);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithMultipleTestCases_ExecutesForEach()
     {
         // Arrange: A theory-style test with multiple test cases
@@ -93,7 +92,7 @@ public class ParameterizedTestExecutionTests
         XunitAssert.All(results, r => XunitAssert.Equal(TestStatus.Passed, r.Status));
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithTestCaseArguments_PassesArgumentsToDelegate()
     {
         // Arrange: Test that verifies arguments are passed to the dispatch delegate
@@ -133,7 +132,7 @@ public class ParameterizedTestExecutionTests
         XunitAssert.All(capturedArguments, a => XunitAssert.NotNull(a));
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithFailingTestCase_ReportsFailureForThatCase()
     {
         // Arrange: Theory test where one case fails
@@ -178,7 +177,7 @@ public class ParameterizedTestExecutionTests
         XunitAssert.Single(results, r => r.Status == TestStatus.Failed);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithTestCaseDisplayNames_UsesDisplayNameInResult()
     {
         // Arrange: Test cases with custom display names
@@ -211,7 +210,7 @@ public class ParameterizedTestExecutionTests
         XunitAssert.All(results, r => XunitAssert.NotNull(r.TestName));
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithNoTestCases_ExecutesMethodOnce()
     {
         // Arrange: A Fact should execute once

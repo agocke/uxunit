@@ -14,6 +14,10 @@ bld/
 [Oo]bj/
 [Oo]ut/
 
+# NXTest meta-package ships MSBuild assets from this build/ folder (not build output).
+!src/NXTest/build/
+!src/NXTest/build/**
+
 # MSTest test Results
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
@@ -73,3 +77,6 @@ TestResults/
 
 # Test comparison outputs
 test/Assets/.comparison-outputs/
+
+# Generator snapshot received files (written on snapshot mismatch)
+*.received.cs

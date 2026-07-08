@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>NXTest</PackageId>
+    <Title>NXTest</Title>
+    <Description>Meta-package that pulls in all NXTest packages (Core, Runtime, and source generators) for a complete testing framework experience.</Description>
+    <PackageTags>testing;unit-testing;source-generator;dotnet</PackageTags>
+    <!-- This is a meta-package: it ships no assemblies of its own, only dependencies. -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
+    <!-- NU5128: package has dependencies but no lib/ref assets, which is expected for a meta-package. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <!-- Ship the MTP builder-hook registration so consumers get an auto-generated
+         test entry point without writing a Main. buildTransitive applies to both
+         direct and transitive package consumers. -->
+    <None Include="build/NXTest.props" Pack="true" PackagePath="buildTransitive/NXTest.props" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Provides the MSBuild targets that generate the MTP entry point and consume
+         TestingPlatformBuilderHook items in consuming projects. -->
+    <PackageReference Include="Microsoft.Testing.Platform.MSBuild" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../NXTest.Core/NXTest.Core.csproj" PrivateAssets="none" />
+    <ProjectReference Include="../NXTest.Runtime/NXTest.Runtime.csproj" PrivateAssets="none" />
+    <ProjectReference Include="../NXTest.Generators/NXTest.Generators.csproj" PrivateAssets="none" />
+  </ItemGroup>
+</Project>

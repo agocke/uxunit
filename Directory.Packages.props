@@ -8,8 +8,9 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
     <!-- Testing Frameworks -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
-    <PackageVersion Include="Microsoft.Testing.Extensions.TrxReport" Version="1.9.1" />
-    <PackageVersion Include="Microsoft.Testing.Platform" Version="1.9.1" />
+    <PackageVersion Include="Microsoft.Testing.Extensions.TrxReport" Version="2.3.0" />
+    <PackageVersion Include="Microsoft.Testing.Platform" Version="2.3.0" />
+    <PackageVersion Include="Microsoft.Testing.Platform.MSBuild" Version="2.3.0" />
     <PackageVersion Include="Serde.Xml" Version="0.3.2" />
     <PackageVersion Include="StaticCS" Version="0.3.1" />
     <PackageVersion Include="StaticCs.Collections" Version="1.1.0" />
