@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using XunitAssert = Xunit.Assert;
-using XunitFactAttribute = Xunit.FactAttribute;
 
 namespace NXTest.Runtime.Tests;
 
@@ -14,7 +13,7 @@ namespace NXTest.Runtime.Tests;
 /// </summary>
 public class ExecutionEngineTests
 {
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithSimplePassingTest_ReturnsPassedResult()
     {
         bool executed = false;
@@ -54,7 +53,7 @@ public class ExecutionEngineTests
         XunitAssert.True(results[0].Duration >= TimeSpan.Zero);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithSkippedTest_ReturnsSkippedResult()
     {
         // Arrange: Create a test marked as skipped
@@ -86,7 +85,7 @@ public class ExecutionEngineTests
         XunitAssert.Equal("Test intentionally skipped for testing", results[0].SkipReason);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithMultipleTests_ReturnsAllResults()
     {
         // Arrange: Create multiple tests
@@ -119,7 +118,7 @@ public class ExecutionEngineTests
         XunitAssert.Single(results, r => r.Status == TestStatus.Skipped);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithSequentialExecution_ExecutesInOrder()
     {
         // Arrange
@@ -146,7 +145,7 @@ public class ExecutionEngineTests
         XunitAssert.All(results, r => XunitAssert.Equal(TestStatus.Passed, r.Status));
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithParallelExecution_ExecutesAllTests()
     {
         // Arrange
@@ -178,7 +177,7 @@ public class ExecutionEngineTests
         XunitAssert.All(results, r => XunitAssert.Equal(TestStatus.Passed, r.Status));
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithStopOnFirstFailure_StopsAfterFirstFailure()
     {
         // Arrange: First test will be skipped (not a failure), second will pass
@@ -207,7 +206,7 @@ public class ExecutionEngineTests
         XunitAssert.Equal(2, results.Length);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithMultipleTestClasses_ExecutesAllClasses()
     {
         // Arrange: Multiple test classes
@@ -248,7 +247,7 @@ public class ExecutionEngineTests
         XunitAssert.Equal(2, results.Count(r => r.ClassName == "TestClass2"));
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_MeasuresDuration()
     {
         // Arrange
@@ -270,7 +269,7 @@ public class ExecutionEngineTests
         XunitAssert.True(results[0].Duration >= TimeSpan.Zero);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithFailingTest_ReturnsFailedResult()
     {
         // Arrange: Create a test that throws an exception
@@ -302,7 +301,7 @@ public class ExecutionEngineTests
         XunitAssert.Contains("Test intentionally failed", results[0].ErrorMessage);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithAsyncTest_ExecutesCorrectly()
     {
         // Arrange: Create an async test
@@ -337,7 +336,7 @@ public class ExecutionEngineTests
         XunitAssert.True(results[0].Duration >= TimeSpan.FromMilliseconds(40)); // Account for timing variance
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_ClassesMode_RunsTestsWithinAClassSequentially()
     {
         // Arrange: tests in the same class share a dispatch that flags any concurrent overlap
@@ -380,7 +379,7 @@ public class ExecutionEngineTests
         );
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_ClassesMode_RunsDifferentClassesInParallel()
     {
         // Arrange: each class's test rendezvouses with the other; this only
@@ -426,7 +425,7 @@ public class ExecutionEngineTests
         XunitAssert.All(results, r => XunitAssert.Equal(TestStatus.Passed, r.Status));
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_RandomlyPermutesTestsAcrossRuns()
     {
         async Task<string> RunAndCaptureOrder()

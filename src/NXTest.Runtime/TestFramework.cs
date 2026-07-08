@@ -62,6 +62,26 @@ public sealed class TestFramework : ITestFramework, IDataProducer
     {
         var builder = await TestApplication.CreateBuilderAsync(args);
         builder.AddTrxReportProvider();
+        builder.AddNXTest(testClasses, options, cancellationToken);
+
+        var app = await builder.BuildAsync();
+        return await app.RunAsync();
+    }
+
+    /// <summary>
+    /// Registers the NXTest framework with a Microsoft.Testing.Platform application
+    /// builder. This is the integration point used by the auto-generated MTP entry point
+    /// so tests can be run without a hand-written <c>Main</c>. TRX reporting is contributed
+    /// separately (by the platform's self-registration, or by <see cref="RunAsync"/> for
+    /// manually hosted builders).
+    /// </summary>
+    internal static void Register(
+        ITestApplicationBuilder builder,
+        TestClassMetadata[] testClasses,
+        TestExecutionOptions? options,
+        CancellationToken cancellationToken
+    )
+    {
         builder.RegisterTestFramework(
             serviceProvider => new TestFrameworkCapabilities(new TrxReportCapability()),
             (capabilities, serviceProvider) =>
@@ -69,9 +89,6 @@ public sealed class TestFramework : ITestFramework, IDataProducer
                 return new TestFramework(testClasses, options ?? new TestExecutionOptions(), cancellationToken);
             }
         );
-
-        var app = await builder.BuildAsync();
-        return await app.RunAsync();
     }
 
     public async Task<CloseTestSessionResult> CloseTestSessionAsync(CloseTestSessionContext context)
@@ -187,25 +204,27 @@ public sealed class TestFramework : ITestFramework, IDataProducer
         foreach (var result in results)
         {
             var testfqn = $"{result.ClassDisplayName ?? result.ClassName}.{result.TestName}";
+            var trxTypeName = new TrxFullyQualifiedTypeNameProperty(result.ClassName);
             TestNode testNode = result.Status switch
             {
                 TestStatus.Skipped => new TestNode()
                 {
                     Uid = testfqn,
                     DisplayName = testfqn,
-                    Properties = new PropertyBag(new SkippedTestNodeStateProperty(result.SkipReason ?? ""))
+                    Properties = new PropertyBag(trxTypeName, new SkippedTestNodeStateProperty(result.SkipReason ?? ""))
                 },
                 TestStatus.Passed => new TestNode()
                 {
                     Uid = testfqn,
                     DisplayName = testfqn,
-                    Properties = new PropertyBag(new PassedTestNodeStateProperty())
+                    Properties = new PropertyBag(trxTypeName, new PassedTestNodeStateProperty())
                 },
                 TestStatus.Failed => new TestNode()
                 {
                     Uid = testfqn,
                     DisplayName = testfqn,
                     Properties = new PropertyBag(
+                        trxTypeName,
                         new FailedTestNodeStateProperty(result.ErrorMessage!),
                         new TrxExceptionProperty(result.ErrorMessage, result.StackTrace)
                     )
@@ -215,6 +234,7 @@ public sealed class TestFramework : ITestFramework, IDataProducer
                     Uid = testfqn,
                     DisplayName = testfqn,
                     Properties = new PropertyBag(
+                        trxTypeName,
                         new ErrorTestNodeStateProperty(result.ErrorMessage ?? "Test infrastructure fault"),
                         new TrxExceptionProperty(result.ErrorMessage, result.StackTrace)
                     )

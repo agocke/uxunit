@@ -1,14 +1,12 @@
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using VerifyXunit;
-using XunitFact = Xunit.FactAttribute;
 
 namespace NXTest.Generators.Tests;
 
 public class BasicGenerationTests
 {
-    [XunitFact]
+    [Fact]
     public Task GeneratesMetadataForSimpleFact()
     {
         var source = """
@@ -26,7 +24,7 @@ public class SimpleTests
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public Task GeneratesMetadataForTheoryWithInlineData()
     {
         var source = """
@@ -46,7 +44,7 @@ public class MathTests
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public Task GeneratesMetadataForMultipleTestMethods()
     {
         var source = """
@@ -75,7 +73,7 @@ public class MixedTests
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public Task GeneratesMetadataForAsyncTest()
     {
         var source = """
@@ -94,7 +92,7 @@ public class AsyncTests
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public Task GeneratesMetadataForStaticFactMethod()
     {
         var source = """
@@ -112,7 +110,7 @@ public class StaticMethodTests
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public Task GeneratesMetadataForStaticTestClass()
     {
         var source = """
@@ -130,7 +128,7 @@ public static class StaticTestClass
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public Task GeneratesMetadataForStaticTheoryMethod()
     {
         var source = """
@@ -150,7 +148,7 @@ public static class StaticTheoryClass
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public Task GeneratesSeparateFilesForDifferentClasses()
     {
         var source = """
@@ -221,7 +219,6 @@ public class TestClass2
             throw new System.Exception($"Generated code has {compilationErrors.Count} compilation error(s)");
         }
 
-        await Verifier.Verify(driver)
-            .UseDirectory("Snapshots");
+        await GeneratorSnapshotVerifier.Verify(driver, $"{nameof(BasicGenerationTests)}.{testName}");
     }
 }
