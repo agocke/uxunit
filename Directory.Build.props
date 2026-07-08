@@ -5,9 +5,9 @@
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
   </PropertyGroup>
 
-  <!-- Shared NuGet package metadata. Version can be overridden from CI via -p:Version=. -->
+  <!-- Shared NuGet package metadata. Update <Version> here to release a new version. -->
   <PropertyGroup>
-    <Version Condition="'$(Version)' == ''">0.1.1</Version>
+    <Version>0.1.1</Version>
     <Authors>NXTest Team</Authors>
     <Copyright>© NXTest Team</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
