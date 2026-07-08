@@ -10,6 +10,7 @@ using Microsoft.Testing.Platform.Capabilities.TestFramework;
 using Microsoft.Testing.Platform.Extensions.Messages;
 using Microsoft.Testing.Platform.Extensions.TestFramework;
 using Microsoft.Testing.Platform.Requests;
+using Microsoft.Testing.Platform.TestHost;
 
 namespace NXTest.Runtime;
 
@@ -107,7 +108,15 @@ public sealed class TestFramework : ITestFramework, IDataProducer
     {
         if (context.Request is DiscoverTestExecutionRequest)
         {
-            throw new System.NotImplementedException();
+            try
+            {
+                // Enumerate all tests and publish them as discovered nodes (no execution).
+                await DiscoverTestsAsync(context);
+            }
+            finally
+            {
+                context.Complete();
+            }
         }
         else if (context.Request is RunTestExecutionRequest)
         {
@@ -122,6 +131,81 @@ public sealed class TestFramework : ITestFramework, IDataProducer
                 context.Complete();
             }
         }
+    }
+
+    private async Task DiscoverTestsAsync(ExecuteRequestContext context)
+    {
+        var sessionUid = context.Request.Session.SessionUid;
+
+        // Walk test classes in parallel; the message bus accepts concurrent publishes (the run
+        // path already relies on this). Discovery has no ordering dependencies, so the run-time
+        // shuffle is intentionally skipped here.
+        await Parallel.ForEachAsync(
+            _testClasses,
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = _options.MaxDegreeOfParallelism,
+                CancellationToken = context.CancellationToken,
+            },
+            async (testClass, ct) =>
+            {
+                foreach (var method in testClass.TestMethods)
+                {
+                    if (ct.IsCancellationRequested)
+                        return;
+
+                    // A skipped test (fact or theory) runs as a single node named after the
+                    // method, so discovery must mirror that to keep Uids correlated with a run.
+                    if (method.Skip)
+                    {
+                        await PublishDiscoveredNodeAsync(
+                            context, sessionUid, testClass.ClassName, $"{testClass.ClassName}.{method.MethodName}");
+                        continue;
+                    }
+
+                    switch (method)
+                    {
+                        case TestMethodMetadata.Theory theory:
+                            foreach (var testCase in theory.TestCases)
+                            {
+                                await PublishDiscoveredNodeAsync(
+                                    context,
+                                    sessionUid,
+                                    testClass.ClassName,
+                                    $"{testClass.ClassName}.{theory.MethodName}({testCase.DisplayName})"
+                                );
+                            }
+                            break;
+
+                        default:
+                            await PublishDiscoveredNodeAsync(
+                                context, sessionUid, testClass.ClassName, $"{testClass.ClassName}.{method.MethodName}");
+                            break;
+                    }
+                }
+            }
+        );
+    }
+
+    // Publishes a single discovered TestNode. The fully-qualified name matches what a run
+    // produces as TestNode Uid/DisplayName so discovered nodes correlate with executed ones.
+    private async Task PublishDiscoveredNodeAsync(
+        ExecuteRequestContext context,
+        SessionUid sessionUid,
+        string className,
+        string fqn
+    )
+    {
+        var testNode = new TestNode()
+        {
+            Uid = fqn,
+            DisplayName = fqn,
+            Properties = new PropertyBag(
+                new TrxFullyQualifiedTypeNameProperty(className),
+                DiscoveredTestNodeStateProperty.CachedInstance
+            )
+        };
+        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(sessionUid, testNode));
     }
 
     private async Task ExecuteTestsAsync(ExecuteRequestContext context)
