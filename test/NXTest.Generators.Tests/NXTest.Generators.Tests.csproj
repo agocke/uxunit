@@ -7,6 +7,10 @@
     <Nullable>enable</Nullable>
     <IsAotCompatible>false</IsAotCompatible>
     <GenerateTestingPlatformEntryPoint>true</GenerateTestingPlatformEntryPoint>
+    <!-- This test project resolves files (NuGet.config, Verify snapshots) via source
+         paths at runtime, so it must not have them rewritten to /_/ by deterministic
+         CI builds. The project is not packed, so this has no effect on shipped output. -->
+    <DeterministicSourcePaths>false</DeterministicSourcePaths>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,6 +35,10 @@
       Include="../../src/NXTest.Generators/NXTest.Generators.csproj"
       OutputItemType="Analyzer"
     />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../NuGet.config" Link="NuGet.config" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- Run via the Microsoft.Testing.Platform auto-generated entry point. -->
