@@ -19,7 +19,7 @@ public sealed class TestFramework : ITestFramework, IDataProducer
 
     public string Uid => "64e8dd3a-ae2c-448f-9481-587f0252bfb8";
 
-    public string Version => "1.0.0";
+    public string Version => "0.1.1";
 
     public string DisplayName => s_displayName;
 
