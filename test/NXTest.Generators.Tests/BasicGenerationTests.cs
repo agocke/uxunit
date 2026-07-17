@@ -71,9 +71,9 @@ public class NullableTheoryTests
             .ToList();
 
         if (!generatedSource.Contains(
-                "Arguments = new global::System.ValueTuple<string?, string, int>(null, \"bob@example.com\", 2),"))
+                "Arguments = ((string?, string, int))(null, \"bob@example.com\", 2),"))
         {
-            throw new System.InvalidOperationException("Generated metadata did not construct a typed ValueTuple.");
+            throw new System.InvalidOperationException("Generated metadata did not cast to a typed tuple.");
         }
 
         if (compilationErrors.Count != 0)
