@@ -347,12 +347,12 @@ public sealed class TestGenerator : IIncrementalGenerator
             builder.Indent();
 
             var args = testCase.Arguments.Select(FormatConstantValue).ToList();
-            // 1 arg: box the value directly. 2+ args: tuple literal. 0 args: null.
+            // 1 arg: box the value directly. 2+ args: construct a typed tuple. 0 args: null.
             var arguments = args.Count switch
             {
                 0 => "null",
                 1 => args[0],
-                _ => $"({string.Join(", ", args)})",
+                _ => $"new {BuildValueTupleType(parameters)}({string.Join(", ", args)})",
             };
             builder.AppendLine($"Arguments = {arguments},");
 
