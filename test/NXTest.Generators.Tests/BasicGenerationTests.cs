@@ -45,6 +45,44 @@ public class MathTests
     }
 
     [Fact]
+    public async Task GeneratesCompilableMetadataForMultiArgumentInlineDataWithNull()
+    {
+        var source = """
+using NXTest;
+
+public class NullableTheoryTests
+{
+    [Theory]
+    [InlineData(null, "bob@example.com", 2)]
+    public void SendsEmail(string? displayName, string email, int retryCount)
+    {
+    }
+}
+""";
+        var compilation = await TestHelpers.CreateCompilation(source);
+        var driver = TestHelpers.RunGenerator(compilation);
+        var result = driver.GetRunResult();
+        var generatedSource = result.GeneratedTrees
+            .Single(tree => tree.FilePath.EndsWith("NullableTheoryTests_Metadata.g.cs"))
+            .ToString();
+        var generatedCompilation = compilation.AddSyntaxTrees(result.GeneratedTrees);
+        var compilationErrors = generatedCompilation.GetDiagnostics()
+            .Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
+            .ToList();
+
+        if (!generatedSource.Contains(
+                "Arguments = ((string?, string, int))(null, \"bob@example.com\", 2),"))
+        {
+            throw new System.InvalidOperationException("Generated metadata did not cast to a typed tuple.");
+        }
+
+        if (compilationErrors.Count != 0)
+        {
+            throw new System.InvalidOperationException("Generated metadata did not compile.");
+        }
+    }
+
+    [Fact]
     public Task GeneratesMetadataForMultipleTestMethods()
     {
         var source = """

@@ -299,8 +299,17 @@ public sealed class TestGenerator : IIncrementalGenerator
 
     private static string BuildValueTupleType(ImmutableArray<IParameterSymbol> parameters)
     {
-        var types = parameters.Select(p => p.Type.ToDisplayString());
-        return $"global::System.ValueTuple<{string.Join(", ", types)}>";
+        return $"global::System.ValueTuple<{BuildTupleElementTypes(parameters)}>";
+    }
+
+    private static string BuildTupleType(ImmutableArray<IParameterSymbol> parameters)
+    {
+        return $"({BuildTupleElementTypes(parameters)})";
+    }
+
+    private static string BuildTupleElementTypes(ImmutableArray<IParameterSymbol> parameters)
+    {
+        return string.Join(", ", parameters.Select(p => p.Type.ToDisplayString()));
     }
 
     private static void GenerateFactMetadata(
@@ -347,12 +356,12 @@ public sealed class TestGenerator : IIncrementalGenerator
             builder.Indent();
 
             var args = testCase.Arguments.Select(FormatConstantValue).ToList();
-            // 1 arg: box the value directly. 2+ args: tuple literal. 0 args: null.
+            // 1 arg: box the value directly. 2+ args: cast to a typed tuple. 0 args: null.
             var arguments = args.Count switch
             {
                 0 => "null",
                 1 => args[0],
-                _ => $"({string.Join(", ", args)})",
+                _ => $"({BuildTupleType(parameters)})({string.Join(", ", args)})",
             };
             builder.AppendLine($"Arguments = {arguments},");
 
