@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using static NXTest.RunResult;
 
 namespace NXTest.Runtime;
 
@@ -13,6 +14,17 @@ namespace NXTest.Runtime;
 /// </summary>
 public static class TestExecutionEngine
 {
+    private const int BenchmarkMinimumWarmupIterationCount = 3;
+    private const int BenchmarkMaximumWarmupIterationCount = 10;
+    private const int BenchmarkMaximumMeasurementIterationCount = 50;
+    private const int BenchmarkMaximumOperationsPerIteration = 1 << 24;
+    private static readonly TimeSpan BenchmarkMinimumIterationTime =
+        TimeSpan.FromMilliseconds(20);
+    private static readonly TimeSpan BenchmarkCalibrationResolutionTime =
+        TimeSpan.FromMilliseconds(1);
+    private static readonly TimeSpan BenchmarkMinimumWarmupTime =
+        TimeSpan.FromMilliseconds(100);
+
     /// <summary>
     /// Executes all tests and returns results.
     /// </summary>
@@ -20,14 +32,22 @@ public static class TestExecutionEngine
     /// <param name="options">Execution options.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Array of test results.</returns>
-    public static async Task<TestResult[]> ExecuteTestsAsync(
+    public static async Task<RunResult[]> ExecuteTestsAsync(
         IReadOnlyList<TestClassMetadata> testClasses,
         TestExecutionOptions options,
         CancellationToken cancellationToken = default
     )
     {
         var allTests = CollectAllTests(testClasses);
+        if (options.RunBenchmarks)
+        {
+            allTests.RemoveAll(
+                test => test.Method is not TestMethodMetadata.Benchmark
+            );
+            return await ExecuteSequentiallyAsync(allTests, options, cancellationToken);
+        }
 
+        allTests.RemoveAll(test => test.Method is TestMethodMetadata.Benchmark);
         return options.Mode switch
         {
             ParallelMode.None => await ExecuteSequentiallyAsync(allTests, options, cancellationToken),
@@ -70,6 +90,33 @@ public static class TestExecutionEngine
                             }
                         );
                         break;
+
+                    case TestMethodMetadata.Benchmark benchmark:
+                        if (benchmark.TestCases.Count == 0)
+                        {
+                            tests.Add(
+                                new TestDescriptor
+                                {
+                                    Method = benchmark,
+                                    Class = testClass,
+                                }
+                            );
+                        }
+                        else
+                        {
+                            foreach (var testCase in benchmark.TestCases)
+                            {
+                                tests.Add(
+                                    new TestDescriptor
+                                    {
+                                        Method = benchmark,
+                                        Class = testClass,
+                                        BenchmarkCase = testCase,
+                                    }
+                                );
+                            }
+                        }
+                        break;
                 }
             }
         }
@@ -90,13 +137,13 @@ public static class TestExecutionEngine
         }
     }
 
-    private static async Task<TestResult[]> ExecuteSequentiallyAsync(
+    private static async Task<RunResult[]> ExecuteSequentiallyAsync(
         List<TestDescriptor> tests,
         TestExecutionOptions options,
         CancellationToken cancellationToken
     )
     {
-        var allResults = new List<TestResult>(tests.Count);
+        var allResults = new List<RunResult>(tests.Count);
 
         foreach (var test in tests)
         {
@@ -106,20 +153,20 @@ public static class TestExecutionEngine
             var results = await ExecuteTestAsync(test, options, cancellationToken);
             allResults.AddRange(results);
 
-            if (options.StopOnFirstFailure && results.Any(r => r.Status == TestStatus.Failed))
+            if (options.StopOnFirstFailure && results.Any(IsFailure))
                 break;
         }
 
         return allResults.ToArray();
     }
 
-    private static async Task<TestResult[]> ExecuteTestsInParallelAsync(
+    private static async Task<RunResult[]> ExecuteTestsInParallelAsync(
         List<TestDescriptor> tests,
         TestExecutionOptions options,
         CancellationToken cancellationToken
     )
     {
-        var allResults = new System.Collections.Concurrent.ConcurrentBag<TestResult>();
+        var allResults = new System.Collections.Concurrent.ConcurrentBag<RunResult>();
         var shouldStop = false;
 
         await Parallel.ForEachAsync(
@@ -140,15 +187,15 @@ public static class TestExecutionEngine
                     allResults.Add(result);
                 }
 
-                if (options.StopOnFirstFailure && results.Any(r => r.Status == TestStatus.Failed))
+                if (options.StopOnFirstFailure && results.Any(IsFailure))
                     shouldStop = true;
             }
         );
 
-        return allResults.OrderBy(r => r.TestId).ToArray();
+        return allResults.OrderBy(r => r.Id).ToArray();
     }
 
-    private static async Task<TestResult[]> ExecuteClassesInParallelAsync(
+    private static async Task<RunResult[]> ExecuteClassesInParallelAsync(
         List<TestDescriptor> tests,
         TestExecutionOptions options,
         CancellationToken cancellationToken
@@ -157,7 +204,7 @@ public static class TestExecutionEngine
         // Classes run in parallel; tests within a class run sequentially.
         var classGroups = tests.GroupBy(t => t.ClassName, StringComparer.Ordinal);
 
-        var allResults = new System.Collections.Concurrent.ConcurrentBag<TestResult>();
+        var allResults = new System.Collections.Concurrent.ConcurrentBag<RunResult>();
         var shouldStop = false;
 
         await Parallel.ForEachAsync(
@@ -182,17 +229,17 @@ public static class TestExecutionEngine
                     {
                         allResults.Add(result);
 
-                        if (options.StopOnFirstFailure && result.Status == TestStatus.Failed)
+                        if (options.StopOnFirstFailure && IsFailure(result))
                             shouldStop = true;
                     }
                 }
             }
         );
 
-        return allResults.OrderBy(r => r.TestId).ToArray();
+        return allResults.OrderBy(r => r.Id).ToArray();
     }
 
-    internal static async Task<TestResult[]> ExecuteTestAsync(
+    internal static async Task<RunResult[]> ExecuteTestAsync(
         TestDescriptor test,
         TestExecutionOptions options,
         CancellationToken cancellationToken
@@ -200,19 +247,28 @@ public static class TestExecutionEngine
     {
         var testId = GenerateTestId(test);
         var methodName = test.Method.MethodName;
-
+        var resultName = test.BenchmarkCase is { } benchmarkCase
+            ? $"{methodName}({benchmarkCase.DisplayName})"
+            : methodName;
 
         // Check if test method should be skipped
         if (test.Method.Skip)
         {
             return
             [
-                TestResult.Skipped(
-                    testId,
-                    methodName,
-                    test.Method.SkipReason ?? "Test marked as skipped",
-                    test.ClassName
-                )
+                test.Method is TestMethodMetadata.Benchmark
+                    ? new BenchmarkResult.Skipped(
+                        testId,
+                        resultName,
+                        test.ClassName,
+                        test.Method.SkipReason ?? "Benchmark marked as skipped"
+                    )
+                    : new TestResult.Skipped(
+                        testId,
+                        methodName,
+                        test.ClassName,
+                        test.Method.SkipReason ?? "Test marked as skipped"
+                    )
             ];
         }
 
@@ -228,13 +284,26 @@ public static class TestExecutionEngine
                 // If the delegate throws, create a fault result
                 return
                 [
-                    TestResult.Fault(
-                        testId,
-                        methodName,
-                        ex.Message,
-                        ex.StackTrace,
-                        test.ClassName
-                    )
+                    test.Method is TestMethodMetadata.Benchmark
+                        ? new BenchmarkResult.Failed(
+                            testId,
+                            resultName,
+                            test.ClassName,
+                            TimeSpan.Zero,
+                            ex.Message
+                        )
+                        {
+                            StackTrace = ex.StackTrace,
+                        }
+                        : new TestResult.Faulted(
+                            testId,
+                            methodName,
+                            test.ClassName,
+                            ex.Message
+                        )
+                        {
+                            StackTrace = ex.StackTrace,
+                        }
                 ];
             }
         }
@@ -263,7 +332,7 @@ public static class TestExecutionEngine
 
                 case TestMethodMetadata.Theory theory:
                     var cases = theory.TestCases;
-                    var results = new TestResult[cases.Count];
+                    var results = new RunResult[cases.Count];
                     for (int i = 0; i < cases.Count; i++)
                     {
                         // Match xUnit's per-case naming: MethodName(displayName)
@@ -281,6 +350,20 @@ public static class TestExecutionEngine
                         );
                     }
                     return results;
+
+                case TestMethodMetadata.Benchmark benchmark:
+                    return
+                    [
+                        await RunBenchmark(
+                            testId,
+                            resultName,
+                            benchmark.BenchmarkDispatch,
+                            testClassInstance,
+                            test.BenchmarkCase?.Arguments,
+                            test.ClassName,
+                            cancellationToken
+                        )
+                    ];
 
                 default:
                     throw new InvalidOperationException(
@@ -323,22 +406,228 @@ public static class TestExecutionEngine
         {
             // If the delegate throws, create a failure result
             sw.Stop();
-            return TestResult.Failure(
-                    testId,
-                    testName,
-                    ex,
-                    sw.Elapsed,
-                    className
-                );
+            return new TestResult.Failed(
+                testId,
+                testName,
+                className,
+                sw.Elapsed,
+                ex.Message
+            )
+            {
+                StackTrace = ex.StackTrace,
+            };
         }
         sw.Stop();
-        return TestResult.Success(
+        return new TestResult.Passed(
             testId,
             testName,
-            sw.Elapsed,
-            className
+            className,
+            sw.Elapsed
         );
     }
+
+    private static async Task<BenchmarkResult> RunBenchmark(
+        string testId,
+        string testName,
+        TestMethodMetadata.Benchmark.DispatchFunc dispatch,
+        object? testClassInstance,
+        object? benchmarkArguments,
+        string className,
+        CancellationToken cancellationToken
+    )
+    {
+        var totalStopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            if (testClassInstance is TestBase testBase)
+            {
+                testBase.SetCts(
+                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+                );
+            }
+
+            var calibration = await CalibrateOperationsPerIteration(
+                dispatch,
+                testClassInstance,
+                benchmarkArguments,
+                cancellationToken
+            );
+
+            var warmupStartTimestamp = Stopwatch.GetTimestamp();
+            var warmupIterations = 0;
+            do
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await dispatch(
+                    testClassInstance,
+                    benchmarkArguments,
+                    calibration.OperationsPerIteration
+                );
+                warmupIterations++;
+            }
+            while (
+                warmupIterations < BenchmarkMinimumWarmupIterationCount
+                || (
+                    warmupIterations < BenchmarkMaximumWarmupIterationCount
+                    && Stopwatch.GetElapsedTime(warmupStartTimestamp)
+                        < BenchmarkMinimumWarmupTime
+                )
+            );
+
+            var samples = new List<double>(BenchmarkMaximumMeasurementIterationCount);
+            long totalMeasurementTimestampTicks = 0;
+            var measurementConverged = false;
+            while (samples.Count < BenchmarkMaximumMeasurementIterationCount)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var startTimestamp = Stopwatch.GetTimestamp();
+                await dispatch(
+                    testClassInstance,
+                    benchmarkArguments,
+                    calibration.OperationsPerIteration
+                );
+                var elapsedTimestampTicks = Stopwatch.GetTimestamp() - startTimestamp;
+                totalMeasurementTimestampTicks += elapsedTimestampTicks;
+                samples.Add(
+                    elapsedTimestampTicks
+                    * (1_000_000_000d / Stopwatch.Frequency)
+                    / calibration.OperationsPerIteration
+                );
+
+                if (BenchmarkAnalysis.HasMetPrecision(samples))
+                {
+                    measurementConverged = true;
+                    break;
+                }
+            }
+
+            totalStopwatch.Stop();
+            return new BenchmarkResult.Completed(
+                testId,
+                testName,
+                className,
+                totalStopwatch.Elapsed,
+                CalculateBenchmarkStatistics(
+                    samples.ToArray(),
+                    calibration,
+                    warmupIterations,
+                    measurementConverged,
+                    totalMeasurementTimestampTicks
+                )
+            );
+        }
+        catch (Exception ex)
+        {
+            totalStopwatch.Stop();
+            return new BenchmarkResult.Failed(
+                testId,
+                testName,
+                className,
+                totalStopwatch.Elapsed,
+                ex.Message
+            )
+            {
+                StackTrace = ex.StackTrace,
+            };
+        }
+    }
+
+    private static async Task<CalibrationResult> CalibrateOperationsPerIteration(
+        TestMethodMetadata.Benchmark.DispatchFunc dispatch,
+        object? testClassInstance,
+        object? benchmarkArguments,
+        CancellationToken cancellationToken
+    )
+    {
+        var operationsPerIteration = 1;
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var startTimestamp = Stopwatch.GetTimestamp();
+            await dispatch(
+                testClassInstance,
+                benchmarkArguments,
+                operationsPerIteration
+            );
+            var elapsed = Stopwatch.GetElapsedTime(startTimestamp);
+
+            if (
+                elapsed >= BenchmarkMinimumIterationTime
+                || operationsPerIteration >= BenchmarkMaximumOperationsPerIteration
+            )
+            {
+                return new CalibrationResult(
+                    operationsPerIteration,
+                    elapsed >= BenchmarkMinimumIterationTime
+                );
+            }
+
+            operationsPerIteration = CalculateNextOperationCount(
+                operationsPerIteration,
+                elapsed
+            );
+        }
+    }
+
+    private static int CalculateNextOperationCount(
+        int operationsPerIteration,
+        TimeSpan elapsed
+    )
+    {
+        if (elapsed < BenchmarkCalibrationResolutionTime)
+        {
+            return (int)Math.Min(
+                (long)operationsPerIteration * 10,
+                BenchmarkMaximumOperationsPerIteration
+            );
+        }
+
+        var projectedOperations = (long)Math.Ceiling(
+            operationsPerIteration
+            * (BenchmarkMinimumIterationTime.TotalSeconds / elapsed.TotalSeconds)
+            * 1.1
+        );
+        projectedOperations = Math.Max(projectedOperations, operationsPerIteration + 1L);
+        projectedOperations = Math.Min(
+            projectedOperations,
+            (long)operationsPerIteration * 100
+        );
+        return (int)Math.Min(
+            projectedOperations,
+            BenchmarkMaximumOperationsPerIteration
+        );
+    }
+
+    private static BenchmarkStatistics CalculateBenchmarkStatistics(
+        double[] samples,
+        CalibrationResult calibration,
+        int warmupIterations,
+        bool measurementConverged,
+        long totalMeasurementTimestampTicks
+    ) =>
+        BenchmarkAnalysis.Calculate(
+            samples,
+            calibration.OperationsPerIteration,
+            calibration.TargetReached,
+            warmupIterations,
+            measurementConverged,
+            totalMeasurementTimestampTicks
+        );
+
+    private readonly record struct CalibrationResult(
+        int OperationsPerIteration,
+        bool TargetReached
+    );
+
+    internal static bool IsFailure(RunResult result) =>
+        result switch
+        {
+            TestResult.Failed or TestResult.Faulted => true,
+            BenchmarkResult.Failed => true,
+            _ => false,
+        };
 
     private static string GenerateTestId(TestDescriptor test)
     {
@@ -352,8 +641,14 @@ public static class TestExecutionEngine
     {
         public required TestClassMetadata Class { get; init; }
         public required TestMethodMetadata Method { get; init; }
+        public TestCaseInfo? BenchmarkCase { get; init; }
 
         public string ClassName => Class.ClassName;
-        public string DisplayName => Class.DisplayName ?? Class.ClassName + "." + Method.MethodName;
+        public string MethodDisplayName =>
+            BenchmarkCase is { } benchmarkCase
+                ? $"{Method.MethodName}({benchmarkCase.DisplayName})"
+                : Method.MethodName;
+        public string DisplayName =>
+            $"{Class.DisplayName ?? Class.ClassName}.{MethodDisplayName}";
     }
 }

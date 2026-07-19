@@ -14,7 +14,7 @@ public static class TestHelpers
         additionalRefs ??= Array.Empty<MetadataReference>();
         IEnumerable<MetadataReference> refs = await Config.Net10Ref.ResolveAsync(null, default);
         refs = refs.Concat(additionalRefs);
-        refs = refs.Append(MetadataReference.CreateFromFile(typeof(NXTest.TestStatus).Assembly.Location));
+        refs = refs.Append(MetadataReference.CreateFromFile(typeof(NXTest.RunResult).Assembly.Location));
         return CSharpCompilation.Create(
             assemblyName ?? "TestAssembly",
             new[] { CSharpSyntaxTree.ParseText(src) },

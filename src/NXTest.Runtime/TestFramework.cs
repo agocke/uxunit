@@ -10,11 +10,13 @@ using Microsoft.Testing.Platform.Capabilities.TestFramework;
 using Microsoft.Testing.Platform.Extensions.Messages;
 using Microsoft.Testing.Platform.Extensions.TestFramework;
 using Microsoft.Testing.Platform.Requests;
+using static NXTest.RunResult;
 
 namespace NXTest.Runtime;
 
 public sealed class TestFramework : ITestFramework, IDataProducer
 {
+    private const string s_benchmarkArgument = "--bench";
     private const string s_displayName = "nxtest Microsoft.Testing.Platform framework";
 
     public string Uid => "64e8dd3a-ae2c-448f-9481-587f0252bfb8";
@@ -29,17 +31,20 @@ public sealed class TestFramework : ITestFramework, IDataProducer
 
     private readonly TestClassMetadata[] _testClasses;
     private TestExecutionOptions _options;
+    private readonly bool _runBenchmarks;
     private readonly CancellationToken _cancellationToken;
 
 
     private TestFramework(
         TestClassMetadata[] testClasses,
         TestExecutionOptions options,
+        bool runBenchmarks,
         CancellationToken cancellationToken
     )
     {
         _testClasses = testClasses;
         _options = options;
+        _runBenchmarks = runBenchmarks;
         _cancellationToken = cancellationToken;
     }
 
@@ -60,13 +65,25 @@ public sealed class TestFramework : ITestFramework, IDataProducer
         CancellationToken cancellationToken = default
     )
     {
-        var builder = await TestApplication.CreateBuilderAsync(args);
+        var runBenchmarks =
+            options?.RunBenchmarks == true
+            || args.Contains(s_benchmarkArgument, StringComparer.Ordinal);
+        var platformArgs = args
+            .Where(arg => !string.Equals(arg, s_benchmarkArgument, StringComparison.Ordinal))
+            .ToArray();
+
+        var builder = await TestApplication.CreateBuilderAsync(platformArgs);
         builder.AddTrxReportProvider();
         builder.RegisterTestFramework(
             serviceProvider => new TestFrameworkCapabilities(new TrxReportCapability()),
             (capabilities, serviceProvider) =>
             {
-                return new TestFramework(testClasses, options ?? new TestExecutionOptions(), cancellationToken);
+                return new TestFramework(
+                    testClasses,
+                    options ?? new TestExecutionOptions(),
+                    runBenchmarks,
+                    cancellationToken
+                );
             }
         );
 
@@ -117,6 +134,22 @@ public sealed class TestFramework : ITestFramework, IDataProducer
         ).Token;
 
         var tests = TestExecutionEngine.CollectAllTests(_testClasses);
+        if (_runBenchmarks)
+        {
+            tests.RemoveAll(
+                test => test.Method is not TestMethodMetadata.Benchmark
+            );
+            foreach (var benchmark in tests)
+            {
+                if (linkedCt.IsCancellationRequested)
+                    break;
+
+                await RunAndPublishAsync(context, benchmark, stopCts, linkedCt);
+            }
+            return;
+        }
+
+        tests.RemoveAll(test => test.Method is TestMethodMetadata.Benchmark);
 
         switch (_options.Mode)
         {
@@ -165,6 +198,7 @@ public sealed class TestFramework : ITestFramework, IDataProducer
                 );
                 break;
         }
+
     }
 
     private async Task RunAndPublishAsync(
@@ -176,53 +210,99 @@ public sealed class TestFramework : ITestFramework, IDataProducer
     {
         var results = await TestExecutionEngine.ExecuteTestAsync(test, _options, ct);
 
-        if (_options.StopOnFirstFailure && results.Any(r => r.Status == TestStatus.Failed))
+        if (_options.StopOnFirstFailure && results.Any(TestExecutionEngine.IsFailure))
             stopCts.Cancel();
 
-        await PublishTestResultsAsync(context, results);
+        await PublishRunResultsAsync(context, results);
     }
 
-    private async Task PublishTestResultsAsync(ExecuteRequestContext context, TestResult[] results)
+    private async Task PublishRunResultsAsync(ExecuteRequestContext context, RunResult[] results)
     {
         foreach (var result in results)
         {
-            var testfqn = $"{result.ClassDisplayName ?? result.ClassName}.{result.TestName}";
-            TestNode testNode = result.Status switch
+            var testNode = result switch
             {
-                TestStatus.Skipped => new TestNode()
-                {
-                    Uid = testfqn,
-                    DisplayName = testfqn,
-                    Properties = new PropertyBag(new SkippedTestNodeStateProperty(result.SkipReason ?? ""))
-                },
-                TestStatus.Passed => new TestNode()
-                {
-                    Uid = testfqn,
-                    DisplayName = testfqn,
-                    Properties = new PropertyBag(new PassedTestNodeStateProperty())
-                },
-                TestStatus.Failed => new TestNode()
-                {
-                    Uid = testfqn,
-                    DisplayName = testfqn,
-                    Properties = new PropertyBag(
-                        new FailedTestNodeStateProperty(result.ErrorMessage!),
-                        new TrxExceptionProperty(result.ErrorMessage, result.StackTrace)
-                    )
-                },
-                TestStatus.Faulted => new TestNode()
-                {
-                    Uid = testfqn,
-                    DisplayName = testfqn,
-                    Properties = new PropertyBag(
-                        new ErrorTestNodeStateProperty(result.ErrorMessage ?? "Test infrastructure fault"),
-                        new TrxExceptionProperty(result.ErrorMessage, result.StackTrace)
-                    )
-                }
+                TestResult testResult => CreateTestNode(testResult),
+                BenchmarkResult benchmarkResult => CreateBenchmarkNode(benchmarkResult),
+                _ => throw new InvalidOperationException(
+                    $"Unknown run result type: {result.GetType()}"
+                ),
             };
             await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(context.Request.Session.SessionUid, testNode));
         }
     }
+
+    private static TestNode CreateTestNode(TestResult result)
+    {
+        var fullyQualifiedName = $"{result.ClassDisplayName ?? result.ClassName}.{result.Name}";
+        return result switch
+        {
+            TestResult.Skipped skipped => new TestNode()
+            {
+                Uid = fullyQualifiedName,
+                DisplayName = fullyQualifiedName,
+                Properties = new PropertyBag(new SkippedTestNodeStateProperty(skipped.Reason))
+            },
+            TestResult.Passed => new TestNode()
+            {
+                Uid = fullyQualifiedName,
+                DisplayName = fullyQualifiedName,
+                Properties = new PropertyBag(new PassedTestNodeStateProperty())
+            },
+            TestResult.Failed failed => new TestNode()
+            {
+                Uid = fullyQualifiedName,
+                DisplayName = fullyQualifiedName,
+                Properties = new PropertyBag(
+                    new FailedTestNodeStateProperty(failed.ErrorMessage),
+                    new TrxExceptionProperty(failed.ErrorMessage, failed.StackTrace)
+                )
+            },
+            TestResult.Faulted faulted => new TestNode()
+            {
+                Uid = fullyQualifiedName,
+                DisplayName = fullyQualifiedName,
+                Properties = new PropertyBag(
+                    new ErrorTestNodeStateProperty(faulted.ErrorMessage),
+                    new TrxExceptionProperty(faulted.ErrorMessage, faulted.StackTrace)
+                )
+            },
+        };
+    }
+
+    private static TestNode CreateBenchmarkNode(BenchmarkResult result)
+    {
+        var fullyQualifiedName = $"{result.ClassDisplayName ?? result.ClassName}.{result.Name}";
+        return result switch
+        {
+            BenchmarkResult.Completed completed => new TestNode()
+            {
+                Uid = fullyQualifiedName,
+                DisplayName = $"{fullyQualifiedName} ({FormatBenchmark(completed.Statistics)})",
+                Properties = new PropertyBag(new PassedTestNodeStateProperty())
+            },
+            BenchmarkResult.Failed failed => new TestNode()
+            {
+                Uid = fullyQualifiedName,
+                DisplayName = fullyQualifiedName,
+                Properties = new PropertyBag(
+                    new FailedTestNodeStateProperty(failed.ErrorMessage),
+                    new TrxExceptionProperty(failed.ErrorMessage, failed.StackTrace)
+                )
+            },
+            BenchmarkResult.Skipped skipped => new TestNode()
+            {
+                Uid = fullyQualifiedName,
+                DisplayName = fullyQualifiedName,
+                Properties = new PropertyBag(
+                    new SkippedTestNodeStateProperty(skipped.Reason)
+                )
+            },
+        };
+    }
+
+    private static string FormatBenchmark(BenchmarkStatistics benchmark) =>
+        BenchmarkResultFormatter.Format(benchmark);
 
     public async Task<bool> IsEnabledAsync() => true;
 }

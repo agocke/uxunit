@@ -14,6 +14,7 @@ NXTest leverages C# source generators to create a small, simple testing framewor
 - **Compile-Time Validation**: Test method signatures and attributes are validated during compilation
 - **Rich Assertion Library**: Uses `xunit.assert` for compatibility and comprehensive assertion capabilities
 - **Parameterized Tests**: Full support for data-driven tests with source generators
+- **Basic Benchmarks**: Warmup and measured iterations with timing statistics
 
 ## Documentation
 
@@ -21,6 +22,7 @@ NXTest leverages C# source generators to create a small, simple testing framewor
 - [Specification](./docs/specification.md) - Detailed API and behavior specifications
 - [Data Model](./docs/data-model.md) - Internal data structures and models
 - [Getting Started](./docs/getting-started.md) - Quick start guide
+- [Benchmarking](./docs/benchmarking.md) - Benchmark usage, semantics, and limitations
 
 ## Project Structure
 
@@ -64,6 +66,25 @@ public class CalculatorTests
     }
 }
 ```
+
+Benchmarks use `[Bench]` and report calibrated per-operation statistics:
+
+```csharp
+[Bench]
+public void ParsePayload()
+{
+    Benchmark.Consume(JsonSerializer.Deserialize<Message>(payload));
+}
+```
+
+Benchmarks are excluded from normal test runs. Run only benchmarks with:
+
+```bash
+dotnet test -- --bench
+```
+
+Benchmarks can use theory-style `[InlineData]`; every data row is calibrated and
+reported independently.
 
 ## License
 

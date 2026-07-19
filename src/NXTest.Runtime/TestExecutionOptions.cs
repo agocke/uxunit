@@ -41,6 +41,11 @@ public sealed class TestExecutionOptions
 
     public bool StopOnFirstFailure { get; init; } = false;
 
+    /// <summary>
+    /// Gets whether to run benchmarks instead of tests. Benchmarks are excluded by default.
+    /// </summary>
+    public bool RunBenchmarks { get; init; } = false;
+
     public TimeSpan? GlobalTimeout { get; init; }
 
     /// <summary>

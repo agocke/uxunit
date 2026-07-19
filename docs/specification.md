@@ -50,7 +50,7 @@ A test method is a method marked with the `[Test]` attribute within a test class
 #### Requirements
 - Must be marked with `[Test]` attribute
 - Must be public
-- Must return `void`, `Task`, `ValueTask`, or `IAsyncEnumerable<T>`
+- Must return `void` or non-generic `Task`
 - May have parameters (for parameterized tests)
 - May be static (static tests are supported)
 
@@ -58,7 +58,6 @@ A test method is a method marked with the `[Test]` attribute within a test class
 ```csharp
 [Fact] public void SimpleTest() { }
 [Fact] public async Task AsyncTest() { }
-[Fact] public async ValueTask ValueTaskTest() { }
 [Theory] public void ParameterizedTest(int value) { }
 [Fact] public static void StaticTest() { }
 ```

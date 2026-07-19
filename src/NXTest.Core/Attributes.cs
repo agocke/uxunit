@@ -27,8 +27,19 @@ public sealed class TheoryAttribute : Attribute
 }
 
 /// <summary>
-/// XUnit-compatible inline data attribute.
-/// Maps directly to NXTest's TestDataAttribute.
+/// Marks a method as a benchmark. Parameters are supplied with
+/// <see cref="InlineDataAttribute"/>; each data row is measured independently.
+/// Instance benchmarks reuse one class instance per case for every pilot,
+/// warmup, and measured invocation. Construction and disposal are not measured.
+/// </summary>
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class BenchAttribute : Attribute
+{
+    public BenchAttribute() { }
+}
+
+/// <summary>
+/// XUnit-compatible inline data for theories and parameterized benchmarks.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public sealed class InlineDataAttribute : Attribute

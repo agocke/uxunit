@@ -84,6 +84,26 @@ public class CalculatorTests
 }
 ```
 
+## Benchmarks
+
+```csharp
+[Bench]
+public void ParsePayload()
+{
+    Benchmark.Consume(JsonSerializer.Deserialize<Message>(payload));
+}
+```
+
+```bash
+dotnet test -- --bench
+```
+
+Add `[InlineData(...)]` to a benchmark method to measure each parameter set as a
+separate benchmark case.
+
+See [Benchmarking](./benchmarking.md) for lifecycle semantics, result details, and
+the current measurement limitations.
+
 ## Setup and Cleanup
 
 Use standard xUnit patterns for test initialization and cleanup:
