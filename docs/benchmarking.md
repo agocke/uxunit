@@ -102,14 +102,37 @@ operation. Methods that already produce observable side effects do not need it.
 
 ## Measurement and Results
 
+### Why batching is required: clock resolution
+
+Timing a single fast operation directly is not possible, because the monotonic clock
+is far coarser than the operations being measured. `System.Diagnostics.Stopwatch`
+does not read the CPU's `rdtsc` counter; it reads the operating system's monotonic
+timer — `mach_absolute_time` (backed by the ARM generic timer `CNTVCT_EL0`) on Apple
+silicon, `QueryPerformanceCounter` on Windows, `clock_gettime(CLOCK_MONOTONIC)` on
+Linux. Although `Stopwatch.Frequency` is often reported as 1 GHz — implying a
+one-nanosecond tick — that figure is a scaling artifact, not the true granularity.
+On Apple silicon the underlying counter runs at 24 MHz, so the smallest observable
+increment is about 42 ns; a typical Windows `QueryPerformanceCounter` resolves to
+about 100 ns. Reading the clock also has non-trivial latency, and even a raw `rdtsc`
+would not help: its read cost and required fencing exceed the cost of a few-nanosecond
+operation, and the counter's frequency is unrelated to instruction throughput.
+
+The runner therefore measures a **batch** of many operations per sample and divides by
+the operation count. A batch spanning tens of milliseconds amortizes both the coarse
+clock quantum and the per-read overhead to a negligible fraction, which is why the
+duration targets below are expressed in milliseconds even though individual operations
+may take only a few nanoseconds.
+
+### Pilot, warmup, and measurement
+
 The runner first executes one untimed preparation operation so cold JIT compilation
 cannot make the first pilot appear long enough and incorrectly select one operation
 per sample. The pilot stage then starts with one operation per iteration. Very short
-pilots increase geometrically; once the clock has a usable signal, the runner
-projects the operation count needed for an iteration of at least 20 milliseconds.
-The count is bounded by an internal safety limit. This reaches a useful signal with
-fewer state-mutating pilot invocations than simple doubling. If the limit is reached
-first, the result reports a calibration warning.
+pilots increase geometrically; once a batch is long enough for the clock quantum to be
+negligible, the runner projects the operation count needed for an iteration of at
+least 20 milliseconds. The count is bounded by an internal safety limit. This reaches
+a useful signal with fewer state-mutating pilot invocations than simple doubling. If
+the limit is reached first, the result reports a calibration warning.
 
 After calibration, the runner warms up with an *adaptive* stability condition rather
 than a fixed duration: it runs batches until the most recent window of per-operation
@@ -119,9 +142,9 @@ runs for at least a few iterations and is bounded by an iteration and time cap.
 
 Because the pilot calibration measured cold, un-tiered code, the runner then
 **recalibrates** the batch size against the warmed per-operation timing, targeting
-roughly 50 milliseconds per sample. This keeps each measured sample large enough for
-good clock resolution once the method has reached steady state, instead of using a
-batch size computed from slower startup code.
+roughly 50 milliseconds per sample. A larger batch keeps the coarse clock quantum a
+negligible fraction of each sample once the method has reached steady state, instead
+of relying on a batch size computed from slower startup code.
 
 Before measurement the runner performs a single full garbage collection and settles
 pending finalizers, then records the heap state. It does **not** collect between
