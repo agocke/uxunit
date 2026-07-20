@@ -29,8 +29,9 @@ public sealed class TheoryAttribute : Attribute
 /// <summary>
 /// Marks a method as a benchmark. Parameters are supplied with
 /// <see cref="InlineDataAttribute"/>; each data row is measured independently.
-/// Instance benchmarks reuse one class instance per case for every pilot,
-/// warmup, and measured invocation. Construction and disposal are not measured.
+/// Instance benchmarks reuse one class instance per case for every preparation,
+/// pilot, warmup, and measured invocation. Construction and disposal are not
+/// measured.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class BenchAttribute : Attribute

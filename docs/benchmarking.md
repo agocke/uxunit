@@ -72,7 +72,7 @@ Programmatic callers can select the same mode with
 Each instance benchmark case gets its own class instance. NXTest:
 
 1. Constructs the instance once.
-2. Reuses it for every pilot, warmup, and measured invocation.
+2. Reuses it for every preparation, pilot, warmup, and measured invocation.
 3. Disposes it once after the benchmark completes when it implements `IDisposable`.
 
 Construction and disposal are outside the measurement window. Constructors can
@@ -102,12 +102,14 @@ operation. Methods that already produce observable side effects do not need it.
 
 ## Measurement and Results
 
-The pilot stage starts with one operation per iteration. Very short pilots increase
-geometrically; once the clock has a usable signal, the runner projects the operation
-count needed for an iteration of at least 20 milliseconds. The count is bounded by
-an internal safety limit. This reaches a useful signal with fewer state-mutating
-pilot invocations than simple doubling. If the limit is reached first, the result
-reports a calibration warning.
+The runner first executes one untimed preparation operation so cold JIT compilation
+cannot make the first pilot appear long enough and incorrectly select one operation
+per sample. The pilot stage then starts with one operation per iteration. Very short
+pilots increase geometrically; once the clock has a usable signal, the runner
+projects the operation count needed for an iteration of at least 20 milliseconds.
+The count is bounded by an internal safety limit. This reaches a useful signal with
+fewer state-mutating pilot invocations than simple doubling. If the limit is reached
+first, the result reports a calibration warning.
 
 After calibration, the runner performs between three and ten unmeasured warmup
 iterations, continuing for at least 100 milliseconds when possible. It then records

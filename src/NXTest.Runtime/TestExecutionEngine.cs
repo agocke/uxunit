@@ -447,6 +447,9 @@ public static class TestExecutionEngine
                 );
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+            await dispatch(testClassInstance, benchmarkArguments, 1);
+
             var calibration = await CalibrateOperationsPerIteration(
                 dispatch,
                 testClassInstance,

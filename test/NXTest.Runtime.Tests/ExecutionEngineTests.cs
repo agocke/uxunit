@@ -523,6 +523,41 @@ public class ExecutionEngineTests
     }
 
     [XunitFact]
+    public async Task ExecuteTestsAsync_CalibrationExcludesColdFirstInvocation()
+    {
+        var dispatchCount = 0;
+        var metadata = new TestClassMetadata
+        {
+            ClassName = "ColdBenchmarkClass",
+            TestMethods =
+            [
+                new TestMethodMetadata.Benchmark
+                {
+                    MethodName = "MeasureWork",
+                    BenchmarkDispatch = async (_, _, _) =>
+                    {
+                        if (Interlocked.Increment(ref dispatchCount) == 1)
+                            await Task.Delay(50);
+                    },
+                },
+            ],
+            CreateInstance = () => null,
+            TestDispatch = (_, _, _) => Task.CompletedTask,
+        };
+
+        var result = XunitAssert.IsType<BenchmarkResult.Completed>(
+            XunitAssert.Single(
+                await TestExecutionEngine.ExecuteTestsAsync(
+                    [metadata],
+                    new TestExecutionOptions { RunBenchmarks = true }
+                )
+            )
+        );
+
+        XunitAssert.True(result.Statistics.OperationsPerIteration > 1);
+    }
+
+    [XunitFact]
     public void BenchmarkAnalysis_UsesSampleStatisticsAndRetainsOutliers()
     {
         double[] samples = [1, 2, 3, 4, 5, 6, 7, 8, 9, 100];
