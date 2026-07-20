@@ -3,8 +3,14 @@
     <TargetFramework>net8.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
     <Nullable>enable</Nullable>
     <IsAotCompatible>false</IsAotCompatible>
+    <GenerateTestingPlatformEntryPoint>true</GenerateTestingPlatformEntryPoint>
+    <!-- This test project resolves files (NuGet.config, Verify snapshots) via source
+         paths at runtime, so it must not have them rewritten to /_/ by deterministic
+         CI builds. The project is not packed, so this has no effect on shipped output. -->
+    <DeterministicSourcePaths>false</DeterministicSourcePaths>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,18 +18,30 @@
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzer.Testing" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="Verify.SourceGenerators" />
-    <PackageReference Include="Verify.XunitV3" />
-    <PackageReference Include="xunit.v3" />
-    <PackageReference Include="xunit.runner.visualstudio">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+    <PackageReference Include="Microsoft.Testing.Platform.MSBuild" />
+    <PackageReference Include="xunit.v3.assert" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Snapshot files are compared at runtime, not compiled. -->
+    <Compile Remove="Snapshots/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/NXTest.Core/NXTest.Core.csproj" />
-    <ProjectReference Include="../../src/NXTest.Generators/NXTest.Generators.csproj" />
+    <ProjectReference Include="../../src/NXTest.Runtime/NXTest.Runtime.csproj" />
+    <!-- Referenced twice: as a normal reference to use TestGenerator directly, and
+         as an analyzer so NXTest discovers this project's own [Fact] tests. -->
+    <ProjectReference
+      Include="../../src/NXTest.Generators/NXTest.Generators.csproj"
+      OutputItemType="Analyzer"
+    />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../NuGet.config" Link="NuGet.config" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Run via the Microsoft.Testing.Platform auto-generated entry point. -->
+  <Import Project="../../src/NXTest/build/NXTest.props" />
 </Project>

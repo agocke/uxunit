@@ -2,7 +2,6 @@ using System;
 using NXTest.Runtime;
 using static NXTest.RunResult;
 using XunitAssert = Xunit.Assert;
-using XunitFact = Xunit.FactAttribute;
 
 namespace NXTest.Runtime.Tests;
 
@@ -27,7 +26,7 @@ public class BenchmarkSummaryFormatterTests
         return new BenchmarkResult.Completed(name, name, className, TimeSpan.FromSeconds(1), statistics);
     }
 
-    [XunitFact]
+    [Fact]
     public void FormatSummary_RendersAlignedTableWithHeaders()
     {
         double[] stable = [100, 100, 100, 100, 100, 100, 100, 100, 100, 100];
@@ -48,7 +47,7 @@ public class BenchmarkSummaryFormatterTests
         XunitAssert.Contains("|---", summary);
     }
 
-    [XunitFact]
+    [Fact]
     public void FormatSummary_MarksUnstableBenchmarksAndAddsNote()
     {
         double[] drifting = [100, 100, 100, 100, 200, 200, 200, 200, 200, 200];
@@ -62,7 +61,7 @@ public class BenchmarkSummaryFormatterTests
         XunitAssert.Contains("unstable", summary);
     }
 
-    [XunitFact]
+    [Fact]
     public void FormatSummary_ListsFailedBenchmarks()
     {
         var failed = new BenchmarkResult.Failed(

@@ -41,6 +41,7 @@ public sealed class BenchAttribute : Attribute
 
 /// <summary>
 /// XUnit-compatible inline data for theories and parameterized benchmarks.
+/// Maps directly to NXTest's TestDataAttribute.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public sealed class InlineDataAttribute : Attribute

@@ -1,11 +1,10 @@
 using XunitAssert = Xunit.Assert;
-using XunitFact = Xunit.FactAttribute;
 
 namespace NXTest.Runtime.Tests;
 
 public class TestFrameworkTests
 {
-    [XunitFact]
+    [Fact]
     public void GetPlatformArguments_StripsBenchmarkFlag()
     {
         var arguments = TestFramework.GetPlatformArguments(["--bench"], runBenchmarks: true);
@@ -13,7 +12,7 @@ public class TestFrameworkTests
         XunitAssert.Empty(arguments);
     }
 
-    [XunitFact]
+    [Fact]
     public void GetPlatformArguments_DoesNotInjectOutputVerbosity()
     {
         var arguments = TestFramework.GetPlatformArguments(
@@ -24,7 +23,7 @@ public class TestFrameworkTests
         XunitAssert.Equal(["--timeout", "30s"], arguments);
     }
 
-    [XunitFact]
+    [Fact]
     public void GetPlatformArguments_TestModePassesArgumentsThrough()
     {
         var arguments = TestFramework.GetPlatformArguments([], runBenchmarks: false);

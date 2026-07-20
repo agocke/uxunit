@@ -1,15 +1,13 @@
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using VerifyXunit;
 using XunitAssert = Xunit.Assert;
-using XunitFact = Xunit.FactAttribute;
 
 namespace NXTest.Generators.Tests;
 
 public class BasicGenerationTests
 {
-    [XunitFact]
+    [Fact]
     public Task GeneratesMetadataForSimpleFact()
     {
         var source = """
@@ -27,7 +25,7 @@ public class SimpleTests
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public Task GeneratesMetadataForTheoryWithInlineData()
     {
         var source = """
@@ -47,7 +45,45 @@ public class MathTests
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
+    public async Task GeneratesCompilableMetadataForMultiArgumentInlineDataWithNull()
+    {
+        var source = """
+using NXTest;
+
+public class NullableTheoryTests
+{
+    [Theory]
+    [InlineData(null, "bob@example.com", 2)]
+    public void SendsEmail(string? displayName, string email, int retryCount)
+    {
+    }
+}
+""";
+        var compilation = await TestHelpers.CreateCompilation(source);
+        var driver = TestHelpers.RunGenerator(compilation);
+        var result = driver.GetRunResult();
+        var generatedSource = result.GeneratedTrees
+            .Single(tree => tree.FilePath.EndsWith("NullableTheoryTests_Metadata.g.cs"))
+            .ToString();
+        var generatedCompilation = compilation.AddSyntaxTrees(result.GeneratedTrees);
+        var compilationErrors = generatedCompilation.GetDiagnostics()
+            .Where(d => d.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
+            .ToList();
+
+        if (!generatedSource.Contains(
+                "Arguments = ((string?, string, int))(null, \"bob@example.com\", 2),"))
+        {
+            throw new System.InvalidOperationException("Generated metadata did not cast to a typed tuple.");
+        }
+
+        if (compilationErrors.Count != 0)
+        {
+            throw new System.InvalidOperationException("Generated metadata did not compile.");
+        }
+    }
+
+    [Fact]
     public Task GeneratesMetadataForMultipleTestMethods()
     {
         var source = """
@@ -76,7 +112,7 @@ public class MixedTests
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public Task GeneratesMetadataForAsyncTest()
     {
         var source = """
@@ -95,7 +131,7 @@ public class AsyncTests
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public Task GeneratesMetadataForStaticFactMethod()
     {
         var source = """
@@ -113,7 +149,7 @@ public class StaticMethodTests
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public Task GeneratesMetadataForStaticTestClass()
     {
         var source = """
@@ -131,7 +167,7 @@ public static class StaticTestClass
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public Task GeneratesMetadataForStaticTheoryMethod()
     {
         var source = """
@@ -151,7 +187,7 @@ public static class StaticTheoryClass
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public Task GeneratesSeparateFilesForDifferentClasses()
     {
         var source = """
@@ -176,7 +212,7 @@ public class TestClass2
         return VerifyGenerator(source);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task GeneratesMetadataForBenchmark()
     {
         var source = """
@@ -201,7 +237,7 @@ public class Benchmarks
             .ToString();
 
         XunitAssert.DoesNotContain(
-            generatedCompilation.GetDiagnostics(Xunit.TestContext.Current.CancellationToken),
+            generatedCompilation.GetDiagnostics(default),
             diagnostic => diagnostic.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error
         );
         XunitAssert.Contains("new TestMethodMetadata.Benchmark", generatedSource);
@@ -228,7 +264,7 @@ public class Benchmarks
         XunitAssert.Contains("i < invocationCount", generatedSource);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ReportsUnsupportedReturnTypes()
     {
         var source = """
@@ -268,7 +304,7 @@ public class InvalidReturnTypes
         );
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ReportsInvalidParameterizedBenchmarkData()
     {
         var source = """
@@ -345,7 +381,6 @@ public class InvalidBenchmarks
             throw new System.Exception($"Generated code has {compilationErrors.Count} compilation error(s)");
         }
 
-        await Verifier.Verify(driver)
-            .UseDirectory("Snapshots");
+        await GeneratorSnapshotVerifier.Verify(driver, $"{nameof(BasicGenerationTests)}.{testName}");
     }
 }

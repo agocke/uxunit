@@ -1,15 +1,7 @@
 name: Publish
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to publish (e.g. 1.2.3). Leave blank to derive from the git tag.'
-        required: false
-        default: ''
 
 jobs:
   publish:
@@ -26,16 +18,12 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Determine version
+      - name: Read version
         id: version
         run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION="${GITHUB_REF_NAME#v}"
-          fi
+          VERSION=$(sed -n 's:.*<Version>\([^<]*\)</Version>.*:\1:p' Directory.Build.props | head -n1 | tr -d '[:space:]')
           if [ -z "$VERSION" ]; then
-            echo "Could not determine a version to publish." >&2
+            echo "Could not read <Version> from Directory.Build.props." >&2
             exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -44,16 +32,16 @@ jobs:
       - name: Build
         run: >-
           dotnet build NXTest.sln
-          -c Release -p:Version=${{ steps.version.outputs.version }} -p:ContinuousIntegrationBuild=true
+          -c Release -p:ContinuousIntegrationBuild=true
 
       - name: Run tests
-        run: dotnet test NXTest.sln -c Release -p:Version=${{ steps.version.outputs.version }} --no-build
+        run: dotnet test NXTest.sln -c Release --no-build
 
       - name: Pack
         run: |
           for proj in Core Runtime Generators; do
             dotnet pack "src/NXTest.$proj/NXTest.$proj.csproj" \
-              -c Release -p:Version=${{ steps.version.outputs.version }} --no-build
+              -c Release --no-build
           done
 
       - name: NuGet login (OIDC -> short-lived API key)
@@ -73,4 +61,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nuget-packages
-          path: artifacts/package/release/*.*nupkg
+          path: artifacts/package/release/*.nupkg

@@ -28,6 +28,7 @@ NXTest leverages C# source generators to create a small, simple testing framewor
 
 ```
 ├── src/
+│   ├── NXTest/                # Meta-package that pulls in all NXTest packages
 │   ├── NXTest.Core/           # Core framework types and attributes
 │   ├── NXTest.Generators/     # Source generators
 │   └── NXTest.Runtime/        # Test runner and execution engine

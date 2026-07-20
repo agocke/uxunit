@@ -6,21 +6,24 @@
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
     <IsTestProject>true</IsTestProject>
-
-    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+    <GenerateTestingPlatformEntryPoint>true</GenerateTestingPlatformEntryPoint>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/NXTest.Core/NXTest.Core.csproj" />
     <ProjectReference Include="../../src/NXTest.Runtime/NXTest.Runtime.csproj" />
+    <ProjectReference
+      Include="../../src/NXTest.Generators/NXTest.Generators.csproj"
+      OutputItemType="Analyzer"
+      ReferenceOutputAssembly="false"
+    />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="xunit.v3" />
-    <PackageReference Include="xunit.runner.visualstudio">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+    <PackageReference Include="xunit.v3.assert" />
+    <PackageReference Include="Microsoft.Testing.Platform.MSBuild" />
   </ItemGroup>
+
+  <!-- Run via the Microsoft.Testing.Platform auto-generated entry point. -->
+  <Import Project="../../src/NXTest/build/NXTest.props" />
 </Project>

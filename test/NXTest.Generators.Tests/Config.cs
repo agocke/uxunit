@@ -1,5 +1,5 @@
+using System;
 using System.IO;
-using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis.Testing;
 
 namespace NXTest.Generators.Tests;
@@ -12,10 +12,6 @@ internal static class Config
             new PackageIdentity("Microsoft.NETCore.App.Ref", "10.0.0"),
             Path.Combine("ref", "net10.0"))
         .WithNuGetConfigFilePath(Path.Combine(
-            GetDirectoryPath(),
-            "..",
-            "..",
+            AppContext.BaseDirectory,
             "NuGet.config"));
-
-    private static string GetDirectoryPath([CallerFilePath]string path = "") => Path.GetDirectoryName(path)!;
 }

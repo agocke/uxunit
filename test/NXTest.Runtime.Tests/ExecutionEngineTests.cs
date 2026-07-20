@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using XunitAssert = Xunit.Assert;
-using XunitFactAttribute = Xunit.FactAttribute;
 using static NXTest.RunResult;
 
 namespace NXTest.Runtime.Tests;
@@ -16,7 +15,7 @@ namespace NXTest.Runtime.Tests;
 /// </summary>
 public class ExecutionEngineTests
 {
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithSimplePassingTest_ReturnsPassedResult()
     {
         bool executed = false;
@@ -55,7 +54,7 @@ public class ExecutionEngineTests
         XunitAssert.True(result.Duration >= TimeSpan.Zero);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithSkippedTest_ReturnsSkippedResult()
     {
         // Arrange: Create a test marked as skipped
@@ -86,7 +85,7 @@ public class ExecutionEngineTests
         XunitAssert.Equal("Test intentionally skipped for testing", result.Reason);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithMultipleTests_ReturnsAllResults()
     {
         // Arrange: Create multiple tests
@@ -119,7 +118,7 @@ public class ExecutionEngineTests
         XunitAssert.Single(results, r => r is TestResult.Skipped);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithSequentialExecution_ExecutesInOrder()
     {
         // Arrange
@@ -146,7 +145,7 @@ public class ExecutionEngineTests
         AssertAllTestsPassed(results);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithParallelExecution_ExecutesAllTests()
     {
         // Arrange
@@ -178,7 +177,7 @@ public class ExecutionEngineTests
         AssertAllTestsPassed(results);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithStopOnFirstFailure_StopsAfterFirstFailure()
     {
         // Arrange: First test will be skipped (not a failure), second will pass
@@ -207,7 +206,7 @@ public class ExecutionEngineTests
         XunitAssert.Equal(2, results.Length);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithMultipleTestClasses_ExecutesAllClasses()
     {
         // Arrange: Multiple test classes
@@ -248,7 +247,7 @@ public class ExecutionEngineTests
         XunitAssert.Equal(2, results.Count(r => r.ClassName == "TestClass2"));
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_MeasuresDuration()
     {
         // Arrange
@@ -270,7 +269,7 @@ public class ExecutionEngineTests
         XunitAssert.True(result.Duration >= TimeSpan.Zero);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithFailingTest_ReturnsFailedResult()
     {
         // Arrange: Create a test that throws an exception
@@ -301,7 +300,7 @@ public class ExecutionEngineTests
         XunitAssert.Contains("Test intentionally failed", result.ErrorMessage);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithAsyncTest_ExecutesCorrectly()
     {
         // Arrange: Create an async test
@@ -335,7 +334,7 @@ public class ExecutionEngineTests
         XunitAssert.True(result.Duration >= TimeSpan.FromMilliseconds(40)); // Account for timing variance
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_ClassesMode_RunsTestsWithinAClassSequentially()
     {
         // Arrange: tests in the same class share a dispatch that flags any concurrent overlap
@@ -378,7 +377,7 @@ public class ExecutionEngineTests
         );
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_ClassesMode_RunsDifferentClassesInParallel()
     {
         // Arrange: each class's test rendezvouses with the other; this only
@@ -424,7 +423,7 @@ public class ExecutionEngineTests
         AssertAllTestsPassed(results);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_RandomlyPermutesTestsAcrossRuns()
     {
         async Task<string> RunAndCaptureOrder()
@@ -464,7 +463,7 @@ public class ExecutionEngineTests
         XunitAssert.NotEqual(run1, run2);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_WithBenchmark_ReturnsTimingStatistics()
     {
         long invocationCount = 0;
@@ -527,7 +526,7 @@ public class ExecutionEngineTests
         XunitAssert.True(benchmark.TotalMeasurementTime > TimeSpan.Zero);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_CalibrationExcludesColdFirstInvocation()
     {
         var dispatchCount = 0;
@@ -562,7 +561,7 @@ public class ExecutionEngineTests
         XunitAssert.True(result.Statistics.OperationsPerIteration > 1);
     }
 
-    [XunitFact]
+    [Fact]
     public void BenchmarkAnalysis_UsesSampleStatisticsAndRetainsOutliers()
     {
         double[] samples = [1, 2, 3, 4, 5, 6, 7, 8, 9, 100];
@@ -595,7 +594,7 @@ public class ExecutionEngineTests
         );
     }
 
-    [XunitFact]
+    [Fact]
     public void BenchmarkAnalysis_FlagsDriftingSamplesAsUnstable()
     {
         // A clear regime shift between the first and second halves.
@@ -610,7 +609,7 @@ public class ExecutionEngineTests
         XunitAssert.True(BenchmarkAnalysis.IsStable([100, 200]));
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_RecalibratesBatchAfterWarmup()
     {
         // Simulate tiered compilation: the method is slow until it has been
@@ -653,7 +652,7 @@ public class ExecutionEngineTests
         XunitAssert.InRange(result.Statistics.WarmupIterations, 4, 20);
     }
 
-    [XunitFact]
+    [Fact]
     public void BenchmarkAnalysis_RequiresTenPreciseSamplesToConverge()
     {
         XunitAssert.False(
@@ -671,7 +670,7 @@ public class ExecutionEngineTests
         );
     }
 
-    [XunitFact]
+    [Fact]
     public void BenchmarkAnalysis_ConvergesDespiteOutliersWhenMedianIsStable()
     {
         // Nine tight samples and one large outlier. The mean-based margin of
@@ -681,7 +680,7 @@ public class ExecutionEngineTests
         XunitAssert.True(BenchmarkAnalysis.HasMetPrecision(samples));
     }
 
-    [XunitFact]
+    [Fact]
     public void BenchmarkResultFormatter_NormalizesAllocationAndGcPerOperation()
     {
         double[] samples = [100, 100, 100, 100, 100, 100, 100, 100, 100, 100];
@@ -707,7 +706,7 @@ public class ExecutionEngineTests
         XunitAssert.DoesNotContain("Mean:", formatted);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_RunsBenchmarksSequentially()
     {
         var running = 0;
@@ -758,7 +757,7 @@ public class ExecutionEngineTests
         XunitAssert.False(overlapDetected);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_ExcludesBenchmarksByDefault()
     {
         var benchmarkInvocations = 0;
@@ -798,7 +797,7 @@ public class ExecutionEngineTests
         XunitAssert.Equal(0, benchmarkInvocations);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_RunBenchmarksExcludesTests()
     {
         var testInvocations = 0;
@@ -836,7 +835,7 @@ public class ExecutionEngineTests
         XunitAssert.Equal(0, testInvocations);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_InstanceBenchmarkReusesAndDisposesOneInstance()
     {
         var instancesCreated = 0;
@@ -884,7 +883,7 @@ public class ExecutionEngineTests
         XunitAssert.True(reusedInstance);
     }
 
-    [XunitFact]
+    [Fact]
     public async Task ExecuteTestsAsync_ParameterizedBenchmarkRunsEachCaseIndependently()
     {
         var instancesCreated = 0;

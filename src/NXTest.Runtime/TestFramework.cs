@@ -11,6 +11,7 @@ using Microsoft.Testing.Platform.Capabilities.TestFramework;
 using Microsoft.Testing.Platform.Extensions.Messages;
 using Microsoft.Testing.Platform.Extensions.TestFramework;
 using Microsoft.Testing.Platform.Requests;
+using Microsoft.Testing.Platform.TestHost;
 using static NXTest.RunResult;
 
 namespace NXTest.Runtime;
@@ -22,7 +23,7 @@ public sealed class TestFramework : ITestFramework, IDataProducer
 
     public string Uid => "64e8dd3a-ae2c-448f-9481-587f0252bfb8";
 
-    public string Version => "1.0.0";
+    public string Version => "0.1.1";
 
     public string DisplayName => s_displayName;
 
@@ -74,6 +75,34 @@ public sealed class TestFramework : ITestFramework, IDataProducer
 
         var builder = await TestApplication.CreateBuilderAsync(platformArgs);
         builder.AddTrxReportProvider();
+        builder.AddNXTest(testClasses, options, cancellationToken, runBenchmarks);
+
+        var app = await builder.BuildAsync();
+        return await app.RunAsync();
+    }
+
+    /// <summary>
+    /// Registers the NXTest framework with a Microsoft.Testing.Platform application
+    /// builder. This is the integration point used by the auto-generated MTP entry point
+    /// so tests can be run without a hand-written <c>Main</c>. TRX reporting is contributed
+    /// separately (by the platform's self-registration, or by <see cref="RunAsync"/> for
+    /// manually hosted builders).
+    /// </summary>
+    internal static void Register(
+        ITestApplicationBuilder builder,
+        TestClassMetadata[] testClasses,
+        TestExecutionOptions? options,
+        CancellationToken cancellationToken,
+        bool? runBenchmarks = null
+    )
+    {
+        // When the caller does not specify (e.g. the auto-generated entry point), fall
+        // back to the options flag or the process command line so `--bench` still works.
+        var effectiveRunBenchmarks =
+            runBenchmarks
+            ?? (options?.RunBenchmarks == true
+                || Environment.GetCommandLineArgs().Contains(s_benchmarkArgument, StringComparer.Ordinal));
+
         builder.RegisterTestFramework(
             serviceProvider => new TestFrameworkCapabilities(new TrxReportCapability()),
             (capabilities, serviceProvider) =>
@@ -81,14 +110,11 @@ public sealed class TestFramework : ITestFramework, IDataProducer
                 return new TestFramework(
                     testClasses,
                     options ?? new TestExecutionOptions(),
-                    runBenchmarks,
+                    effectiveRunBenchmarks,
                     cancellationToken
                 );
             }
         );
-
-        var app = await builder.BuildAsync();
-        return await app.RunAsync();
     }
 
     internal static string[] GetPlatformArguments(string[] args, bool runBenchmarks)
@@ -118,7 +144,15 @@ public sealed class TestFramework : ITestFramework, IDataProducer
     {
         if (context.Request is DiscoverTestExecutionRequest)
         {
-            throw new System.NotImplementedException();
+            try
+            {
+                // Enumerate all tests and publish them as discovered nodes (no execution).
+                await DiscoverTestsAsync(context);
+            }
+            finally
+            {
+                context.Complete();
+            }
         }
         else if (context.Request is RunTestExecutionRequest)
         {
@@ -133,6 +167,81 @@ public sealed class TestFramework : ITestFramework, IDataProducer
                 context.Complete();
             }
         }
+    }
+
+    private async Task DiscoverTestsAsync(ExecuteRequestContext context)
+    {
+        var sessionUid = context.Request.Session.SessionUid;
+
+        // Walk test classes in parallel; the message bus accepts concurrent publishes (the run
+        // path already relies on this). Discovery has no ordering dependencies, so the run-time
+        // shuffle is intentionally skipped here.
+        await Parallel.ForEachAsync(
+            _testClasses,
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = _options.MaxDegreeOfParallelism,
+                CancellationToken = context.CancellationToken,
+            },
+            async (testClass, ct) =>
+            {
+                foreach (var method in testClass.TestMethods)
+                {
+                    if (ct.IsCancellationRequested)
+                        return;
+
+                    // A skipped test (fact or theory) runs as a single node named after the
+                    // method, so discovery must mirror that to keep Uids correlated with a run.
+                    if (method.Skip)
+                    {
+                        await PublishDiscoveredNodeAsync(
+                            context, sessionUid, testClass.ClassName, $"{testClass.ClassName}.{method.MethodName}");
+                        continue;
+                    }
+
+                    switch (method)
+                    {
+                        case TestMethodMetadata.Theory theory:
+                            foreach (var testCase in theory.TestCases)
+                            {
+                                await PublishDiscoveredNodeAsync(
+                                    context,
+                                    sessionUid,
+                                    testClass.ClassName,
+                                    $"{testClass.ClassName}.{theory.MethodName}({testCase.DisplayName})"
+                                );
+                            }
+                            break;
+
+                        default:
+                            await PublishDiscoveredNodeAsync(
+                                context, sessionUid, testClass.ClassName, $"{testClass.ClassName}.{method.MethodName}");
+                            break;
+                    }
+                }
+            }
+        );
+    }
+
+    // Publishes a single discovered TestNode. The fully-qualified name matches what a run
+    // produces as TestNode Uid/DisplayName so discovered nodes correlate with executed ones.
+    private async Task PublishDiscoveredNodeAsync(
+        ExecuteRequestContext context,
+        SessionUid sessionUid,
+        string className,
+        string fqn
+    )
+    {
+        var testNode = new TestNode()
+        {
+            Uid = fqn,
+            DisplayName = fqn,
+            Properties = new PropertyBag(
+                new TrxFullyQualifiedTypeNameProperty(className),
+                DiscoveredTestNodeStateProperty.CachedInstance
+            )
+        };
+        await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(sessionUid, testNode));
     }
 
     private async Task ExecuteTestsAsync(ExecuteRequestContext context)
@@ -260,25 +369,27 @@ public sealed class TestFramework : ITestFramework, IDataProducer
     private static TestNode CreateTestNode(TestResult result)
     {
         var fullyQualifiedName = $"{result.ClassDisplayName ?? result.ClassName}.{result.Name}";
+        var trxTypeName = new TrxFullyQualifiedTypeNameProperty(result.ClassName);
         return result switch
         {
             TestResult.Skipped skipped => new TestNode()
             {
                 Uid = fullyQualifiedName,
                 DisplayName = fullyQualifiedName,
-                Properties = new PropertyBag(new SkippedTestNodeStateProperty(skipped.Reason))
+                Properties = new PropertyBag(trxTypeName, new SkippedTestNodeStateProperty(skipped.Reason))
             },
             TestResult.Passed => new TestNode()
             {
                 Uid = fullyQualifiedName,
                 DisplayName = fullyQualifiedName,
-                Properties = new PropertyBag(new PassedTestNodeStateProperty())
+                Properties = new PropertyBag(trxTypeName, new PassedTestNodeStateProperty())
             },
             TestResult.Failed failed => new TestNode()
             {
                 Uid = fullyQualifiedName,
                 DisplayName = fullyQualifiedName,
                 Properties = new PropertyBag(
+                    trxTypeName,
                     new FailedTestNodeStateProperty(failed.ErrorMessage),
                     new TrxExceptionProperty(failed.ErrorMessage, failed.StackTrace)
                 )
@@ -288,6 +399,7 @@ public sealed class TestFramework : ITestFramework, IDataProducer
                 Uid = fullyQualifiedName,
                 DisplayName = fullyQualifiedName,
                 Properties = new PropertyBag(
+                    trxTypeName,
                     new ErrorTestNodeStateProperty(faulted.ErrorMessage),
                     new TrxExceptionProperty(faulted.ErrorMessage, faulted.StackTrace)
                 )
@@ -298,19 +410,21 @@ public sealed class TestFramework : ITestFramework, IDataProducer
     private static TestNode CreateBenchmarkNode(BenchmarkResult result)
     {
         var fullyQualifiedName = $"{result.ClassDisplayName ?? result.ClassName}.{result.Name}";
+        var trxTypeName = new TrxFullyQualifiedTypeNameProperty(result.ClassName);
         return result switch
         {
             BenchmarkResult.Completed completed => new TestNode()
             {
                 Uid = fullyQualifiedName,
                 DisplayName = fullyQualifiedName,
-                Properties = new PropertyBag(new PassedTestNodeStateProperty())
+                Properties = new PropertyBag(trxTypeName, new PassedTestNodeStateProperty())
             },
             BenchmarkResult.Failed failed => new TestNode()
             {
                 Uid = fullyQualifiedName,
                 DisplayName = fullyQualifiedName,
                 Properties = new PropertyBag(
+                    trxTypeName,
                     new FailedTestNodeStateProperty(failed.ErrorMessage),
                     new TrxExceptionProperty(failed.ErrorMessage, failed.StackTrace)
                 )
@@ -320,6 +434,7 @@ public sealed class TestFramework : ITestFramework, IDataProducer
                 Uid = fullyQualifiedName,
                 DisplayName = fullyQualifiedName,
                 Properties = new PropertyBag(
+                    trxTypeName,
                     new SkippedTestNodeStateProperty(skipped.Reason)
                 )
             },

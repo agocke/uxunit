@@ -5,9 +5,9 @@
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
   </PropertyGroup>
 
-  <!-- Shared NuGet package metadata. Version can be overridden from CI via -p:Version=. -->
+  <!-- Shared NuGet package metadata. Update <Version> here to release a new version. -->
   <PropertyGroup>
-    <Version Condition="'$(Version)' == ''">1.0.0</Version>
+    <Version>0.1.4</Version>
     <Authors>NXTest Team</Authors>
     <Copyright>© NXTest Team</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -15,7 +15,6 @@
     <PackageProjectUrl>https://github.com/nxtest/nxtest</PackageProjectUrl>
     <RepositoryUrl>https://github.com/nxtest/nxtest</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 </Project>

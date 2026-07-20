@@ -44,12 +44,12 @@ namespace NXTest.Generated
                         {
                             new TestCaseInfo
                             {
-                                Arguments = (1, 2, 3),
+                                Arguments = ((int, int, int))(1, 2, 3),
                                 DisplayName = "a: 1, b: 2, sum: 3",
                             },
                             new TestCaseInfo
                             {
-                                Arguments = (5, 7, 12),
+                                Arguments = ((int, int, int))(5, 7, 12),
                                 DisplayName = "a: 5, b: 7, sum: 12",
                             },
                         },
