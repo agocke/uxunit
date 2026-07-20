@@ -82,7 +82,7 @@ in Release mode so successful timing details are shown:
 
 ```bash
 dotnet run --project perf/bench/bench.csproj -c Release -- \
-  --bench --output Detailed
+  --bench
 ```
 
 Benchmarks can use theory-style `[InlineData]`; every data row is calibrated and

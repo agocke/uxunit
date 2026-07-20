@@ -55,14 +55,14 @@ successful benchmarks:
 
 ```bash
 dotnet run --project perf/bench/bench.csproj -c Release -- \
-  --bench --output Detailed
+  --bench
 ```
 
 Replace `perf/bench/bench.csproj` with the path to your benchmark project.
-`--bench` runs benchmarks exclusively; facts and theories are not run. The native
-Microsoft Testing Platform runner's `Detailed` output is important because
-`dotnet test` normally hides details for successful results, including benchmark
-timings.
+`--bench` runs benchmarks exclusively; facts and theories are not run. NXTest
+defaults the native Microsoft Testing Platform runner to `Detailed` output in
+benchmark mode because its normal output hides successful benchmark timings. Pass
+an explicit `--output` value to override this default.
 
 Programmatic callers can select the same mode with
 `TestExecutionOptions.RunBenchmarks = true`.

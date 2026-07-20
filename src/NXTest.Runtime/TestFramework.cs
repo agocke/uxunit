@@ -17,6 +17,7 @@ namespace NXTest.Runtime;
 public sealed class TestFramework : ITestFramework, IDataProducer
 {
     private const string s_benchmarkArgument = "--bench";
+    private const string s_outputArgument = "--output";
     private const string s_displayName = "nxtest Microsoft.Testing.Platform framework";
 
     public string Uid => "64e8dd3a-ae2c-448f-9481-587f0252bfb8";
@@ -68,9 +69,7 @@ public sealed class TestFramework : ITestFramework, IDataProducer
         var runBenchmarks =
             options?.RunBenchmarks == true
             || args.Contains(s_benchmarkArgument, StringComparer.Ordinal);
-        var platformArgs = args
-            .Where(arg => !string.Equals(arg, s_benchmarkArgument, StringComparison.Ordinal))
-            .ToArray();
+        var platformArgs = GetPlatformArguments(args, runBenchmarks);
 
         var builder = await TestApplication.CreateBuilderAsync(platformArgs);
         builder.AddTrxReportProvider();
@@ -89,6 +88,32 @@ public sealed class TestFramework : ITestFramework, IDataProducer
 
         var app = await builder.BuildAsync();
         return await app.RunAsync();
+    }
+
+    internal static string[] GetPlatformArguments(string[] args, bool runBenchmarks)
+    {
+        var platformArgs = args
+            .Where(arg => !string.Equals(arg, s_benchmarkArgument, StringComparison.Ordinal))
+            .ToArray();
+
+        if (
+            !runBenchmarks
+            || platformArgs.Any(
+                arg =>
+                    string.Equals(arg, s_outputArgument, StringComparison.Ordinal)
+                    || arg.StartsWith(s_outputArgument + "=", StringComparison.Ordinal)
+            )
+        )
+        {
+            return platformArgs;
+        }
+
+        return
+        [
+            .. platformArgs,
+            s_outputArgument,
+            "Detailed",
+        ];
     }
 
     public async Task<CloseTestSessionResult> CloseTestSessionAsync(CloseTestSessionContext context)

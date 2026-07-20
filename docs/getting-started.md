@@ -96,12 +96,13 @@ public void ParsePayload()
 
 ```bash
 dotnet run --project perf/bench/bench.csproj -c Release -- \
-  --bench --output Detailed
+  --bench
 ```
 
 Replace the project path as needed. Running the Microsoft Testing Platform
 executable directly is preferred because `dotnet test` hides timing details for
-successful benchmarks.
+successful benchmarks. Benchmark mode automatically selects detailed output unless
+you pass an explicit `--output` value.
 
 Add `[InlineData(...)]` to a benchmark method to measure each parameter set as a
 separate benchmark case.
