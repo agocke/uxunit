@@ -103,7 +103,7 @@ public sealed class ConsoleRunReporter(bool _verbose) : IRunResultReporter
         {
             Console.WriteLine(
                 $" {result.ClassName}.{result.Name} "
-                + $"(mean {BenchmarkResultFormatter.FormatNanoseconds(completed.Statistics.MeanNanoseconds)}, "
+                + $"(median {BenchmarkResultFormatter.FormatNanoseconds(completed.Statistics.MedianNanoseconds)}, "
                 + $"{completed.Statistics.OperationsPerIteration} operations/iteration)"
             );
         }

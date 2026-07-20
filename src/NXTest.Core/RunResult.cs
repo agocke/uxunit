@@ -126,6 +126,7 @@ public sealed record BenchmarkStatistics(
     IReadOnlyList<double> SamplesNanoseconds,
     double MeanNanoseconds,
     double MedianNanoseconds,
+    double LowerQuantileNanoseconds,
     double MinimumNanoseconds,
     double MaximumNanoseconds,
     double StandardDeviationNanoseconds,

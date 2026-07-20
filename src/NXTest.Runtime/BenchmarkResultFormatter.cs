@@ -18,13 +18,11 @@ internal static class BenchmarkResultFormatter
             statistics.Gen2Collections, totalOperations);
 
         return $"Median: {FormatNanoseconds(statistics.MedianNanoseconds)}; "
+            + $"Floor (P{(int)(BenchmarkAnalysis.LowerQuantile * 100)}): "
+            + $"{FormatNanoseconds(statistics.LowerQuantileNanoseconds)}; "
             + $"MAD: {FormatNanoseconds(statistics.MedianAbsoluteDeviationNanoseconds)}; "
-            + $"Mean: {FormatNanoseconds(statistics.MeanNanoseconds)}; "
-            + $"StdDev: {FormatNanoseconds(statistics.StandardDeviationNanoseconds)}; "
             + $"Min: {FormatNanoseconds(statistics.MinimumNanoseconds)}; "
             + $"Max: {FormatNanoseconds(statistics.MaximumNanoseconds)}; "
-            + $"95% CI: [{FormatNanoseconds(statistics.ConfidenceIntervalLowerNanoseconds)}, "
-            + $"{FormatNanoseconds(statistics.ConfidenceIntervalUpperNanoseconds)}]; "
             + $"Samples: {statistics.Iterations}; "
             + $"Outliers: {statistics.OutlierCount}; "
             + $"Operations/iteration: {statistics.OperationsPerIteration}; "
@@ -45,7 +43,7 @@ internal static class BenchmarkResultFormatter
             + (
                 statistics.IsStable
                     ? ""
-                    : "; Warning: unstable timing detected (distinct regimes across samples); treat the mean with caution"
+                    : "; Warning: unstable timing detected (distinct regimes across samples); treat the results with caution"
             );
     }
 

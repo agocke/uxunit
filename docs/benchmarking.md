@@ -170,24 +170,53 @@ configurable. Benchmarks run sequentially to reduce interference.
 
 In-process timing is prone to *non-stationary execution* — the timing can shift
 partway through a run due to late tiering, cache effects, or scheduling. The runner
-guards against reporting a deceptively precise mean over such a run by comparing the
+guards against reporting deceptively precise results over such a run by comparing the
 median of the first half of the samples with the median of the second half. When
 those regimes differ materially, the result is flagged as **unstable**. Comparing
 medians of sample groups also blunts the effect of autocorrelation between adjacent
 samples.
 
-Summary statistics lead with the **median** and **median absolute deviation (MAD)**,
-which are robust to the occasional slow sample; the mean and its confidence interval
-are retained as secondary measures.
+The reported statistics reflect a deliberate choice about *what a benchmark is
+estimating*. Measurement noise is almost entirely one-sided — context switches,
+interrupts, GC pauses, and thermal effects can only make a sample slower, never
+faster than the true cost. That informs which summaries are useful:
+
+- **Median (primary)** — a robust estimate of the *typical* per-operation cost,
+  insensitive to the occasional slow sample. It includes the median amount of any
+  genuine, representative variance (data-dependent branches, rehashing, allocation),
+  which makes it a sound general-purpose headline.
+- **Floor, reported as the 10th percentile (primary)** — an estimate of the
+  *intrinsic* cost with the least measurement interference. Because noise is
+  one-sided, the low end of the distribution is the least corrupted and the most
+  reproducible number for comparing implementations or detecting regressions. A low
+  percentile is used rather than the raw minimum because the minimum is an extreme
+  order statistic biased by sample count, whereas the 10th percentile stays close to
+  the floor while remaining stable across runs. (Note that each sample is already a
+  mean over a batch of operations, so the floor is the best *sustained* per-operation
+  throughput, not a single lucky reading.)
+- **MAD** — robust dispersion around the median.
+- **Minimum and maximum** — the observed range.
+
+The **gap between the floor and the median is itself diagnostic**: when they are
+close, the operation is deterministic and CPU-bound; when the floor is much lower than
+the median, the operation has real or noise-induced variance and should be read with
+that in mind.
+
+The mean is intentionally *not* part of the headline: it is dominated by the
+right-hand tail and is the worst estimator of intrinsic cost. It is retained in the
+data model (along with the standard deviation, standard error, and the mean's
+confidence interval) because it is the only additive summary — `mean × operations`
+gives total time — which is useful for throughput and programmatic consumers.
 
 A completed benchmark produces `BenchmarkResult.Completed` with:
 
 - Total measured time
 - Raw per-operation samples
 - Median and median absolute deviation (primary)
-- Mean, sample standard deviation, and standard error (secondary)
+- Floor / 10th-percentile per-operation time (primary)
 - Minimum and maximum
-- 95% confidence interval for the mean
+- Mean, sample standard deviation, standard error, and the mean's 95% confidence
+  interval (secondary; not shown on the console)
 - Tukey outlier count
 - Stability flag (whether distinct timing regimes were detected)
 - Gen0/Gen1/Gen2 collection counts and bytes allocated during measurement

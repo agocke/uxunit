@@ -11,6 +11,11 @@ internal static class BenchmarkAnalysis
     internal const double TargetRelativeMarginOfError = 0.02;
     internal const double InstabilityThreshold = 0.10;
 
+    // The low quantile reported as the "floor": an estimate of the intrinsic
+    // cost with the least measurement interference, but more stable across
+    // sample counts than the raw minimum.
+    internal const double LowerQuantile = 0.10;
+
     // Scales the median absolute deviation to a standard-deviation-equivalent
     // for normally distributed data, giving a robust dispersion estimate.
     private const double RobustStandardDeviationConstant = 1.4826;
@@ -94,6 +99,7 @@ internal static class BenchmarkAnalysis
         var marginOfError = GetCriticalValue95(samples.Length - 1) * standardError;
 
         var median = Percentile(sortedSamples, 0.5);
+        var lowerQuantile = Percentile(sortedSamples, LowerQuantile);
         var medianAbsoluteDeviation = MedianAbsoluteDeviation(samples, median);
 
         var firstQuartile = Percentile(sortedSamples, 0.25);
@@ -123,6 +129,7 @@ internal static class BenchmarkAnalysis
             retainedSamples,
             summary.Mean,
             median,
+            lowerQuantile,
             sortedSamples[0],
             sortedSamples[^1],
             standardDeviation,

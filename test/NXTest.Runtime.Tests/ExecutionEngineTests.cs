@@ -510,6 +510,8 @@ public class ExecutionEngineTests
         XunitAssert.True(benchmark.MeanNanoseconds <= benchmark.MaximumNanoseconds);
         XunitAssert.True(benchmark.MinimumNanoseconds <= benchmark.MedianNanoseconds);
         XunitAssert.True(benchmark.MedianNanoseconds <= benchmark.MaximumNanoseconds);
+        XunitAssert.True(benchmark.MinimumNanoseconds <= benchmark.LowerQuantileNanoseconds);
+        XunitAssert.True(benchmark.LowerQuantileNanoseconds <= benchmark.MedianNanoseconds);
         XunitAssert.True(benchmark.StandardDeviationNanoseconds >= 0);
         XunitAssert.True(benchmark.StandardErrorNanoseconds >= 0);
         XunitAssert.True(benchmark.MedianAbsoluteDeviationNanoseconds >= 0);
@@ -576,6 +578,7 @@ public class ExecutionEngineTests
 
         XunitAssert.Equal(14.5, statistics.MeanNanoseconds);
         XunitAssert.Equal(5.5, statistics.MedianNanoseconds);
+        XunitAssert.Equal(1.9, statistics.LowerQuantileNanoseconds);
         XunitAssert.Equal(2.5, statistics.MedianAbsoluteDeviationNanoseconds);
         XunitAssert.Equal(1, statistics.MinimumNanoseconds);
         XunitAssert.Equal(100, statistics.MaximumNanoseconds);
@@ -698,6 +701,10 @@ public class ExecutionEngineTests
         XunitAssert.Contains("Allocated: 416.00 B/op", formatted);
         // 1 gen0 collection over 1000 operations = 1.0000 per 1000 operations.
         XunitAssert.Contains("GC/1k op: 1.0000/0.0000/0.0000", formatted);
+        // Median and low-quantile floor lead the summary; mean is no longer shown.
+        XunitAssert.Contains("Median:", formatted);
+        XunitAssert.Contains("Floor (P10):", formatted);
+        XunitAssert.DoesNotContain("Mean:", formatted);
     }
 
     [XunitFact]
