@@ -95,8 +95,7 @@ public void ParsePayload()
 ```
 
 ```bash
-dotnet run --project perf/bench/bench.csproj \
-  -p:EnableNXTestBenchmarks=true -c Release -- \
+dotnet run --project perf/bench/bench.csproj -c Release -- \
   --bench --output Detailed
 ```
 
