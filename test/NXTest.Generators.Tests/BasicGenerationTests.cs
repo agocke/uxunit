@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using XunitAssert = Xunit.Assert;
 
 namespace NXTest.Generators.Tests;
 
@@ -209,6 +210,129 @@ public class TestClass2
 }
 """;
         return VerifyGenerator(source);
+    }
+
+    [Fact]
+    public async Task GeneratesMetadataForBenchmark()
+    {
+        var source = """
+using NXTest;
+
+public class Benchmarks
+{
+    [Bench]
+    [InlineData(16, "ascii")]
+    [InlineData(64, "unicode")]
+    public void MeasureWork(int size, string encoding)
+    {
+        Benchmark.Consume(size + encoding.Length);
+    }
+}
+""";
+        var compilation = await TestHelpers.CreateCompilation(source);
+        var result = TestHelpers.RunGenerator(compilation).GetRunResult();
+        var generatedCompilation = compilation.AddSyntaxTrees(result.GeneratedTrees);
+        var generatedSource = result.GeneratedTrees
+            .Single(tree => tree.FilePath.EndsWith("Benchmarks_Metadata.g.cs"))
+            .ToString();
+
+        XunitAssert.DoesNotContain(
+            generatedCompilation.GetDiagnostics(default),
+            diagnostic => diagnostic.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error
+        );
+        XunitAssert.Contains("new TestMethodMetadata.Benchmark", generatedSource);
+        XunitAssert.Contains("MethodName = \"MeasureWork\"", generatedSource);
+        XunitAssert.Contains("DisplayName = \"size: 16, encoding:", generatedSource);
+        XunitAssert.Contains("DisplayName = \"size: 64, encoding:", generatedSource);
+        XunitAssert.Contains("BenchmarkDispatch =", generatedSource);
+        XunitAssert.Contains(
+            "(receiver, benchmarkArgs, invocationCount)",
+            generatedSource
+        );
+        XunitAssert.Contains(
+            "var args = (global::System.ValueTuple<int, string>)benchmarkArgs!;",
+            generatedSource
+        );
+        XunitAssert.True(
+            generatedSource.IndexOf("var args =", System.StringComparison.Ordinal)
+                < generatedSource.IndexOf(
+                    "for (var i = 0;",
+                    System.StringComparison.Ordinal
+                )
+        );
+        XunitAssert.Contains("MeasureWork(args.Item1, args.Item2)", generatedSource);
+        XunitAssert.Contains("i < invocationCount", generatedSource);
+    }
+
+    [Fact]
+    public async Task ReportsUnsupportedReturnTypes()
+    {
+        var source = """
+using System.Threading.Tasks;
+using NXTest;
+
+public class InvalidReturnTypes
+{
+    [Fact]
+    public ValueTask ValueTaskTest() => ValueTask.CompletedTask;
+
+    [Bench]
+    public Task<int> GenericTaskBenchmark() => Task.FromResult(1);
+}
+""";
+        var compilation = await TestHelpers.CreateCompilation(source);
+        var result = TestHelpers.RunGenerator(compilation).GetRunResult();
+        var diagnostics = result.Diagnostics
+            .Where(diagnostic => diagnostic.Id == "NXTEST001")
+            .ToArray();
+
+        XunitAssert.Equal(2, diagnostics.Length);
+        XunitAssert.All(
+            diagnostics,
+            diagnostic => XunitAssert.Equal(
+                Microsoft.CodeAnalysis.DiagnosticSeverity.Error,
+                diagnostic.Severity
+            )
+        );
+        XunitAssert.Contains(
+            diagnostics,
+            diagnostic => diagnostic.GetMessage().Contains("ValueTaskTest")
+        );
+        XunitAssert.Contains(
+            diagnostics,
+            diagnostic => diagnostic.GetMessage().Contains("GenericTaskBenchmark")
+        );
+    }
+
+    [Fact]
+    public async Task ReportsInvalidParameterizedBenchmarkData()
+    {
+        var source = """
+using NXTest;
+
+public class InvalidBenchmarks
+{
+    [Bench]
+    public void MissingData(int size)
+    {
+    }
+
+    [Bench]
+    [InlineData(16)]
+    public void WrongArgumentCount(int size, bool pooled)
+    {
+    }
+}
+""";
+        var compilation = await TestHelpers.CreateCompilation(source);
+        var result = TestHelpers.RunGenerator(compilation).GetRunResult();
+
+        XunitAssert.Contains(result.Diagnostics, diagnostic => diagnostic.Id == "NXTEST002");
+        XunitAssert.Contains(result.Diagnostics, diagnostic => diagnostic.Id == "NXTEST003");
+        XunitAssert.DoesNotContain(
+            result.GeneratedTrees,
+            tree => tree.FilePath.EndsWith("InvalidBenchmarks_Metadata.g.cs")
+        );
     }
 
     private static async Task VerifyGenerator(string source, [CallerMemberName] string? testName = null)

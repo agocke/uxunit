@@ -20,10 +20,11 @@ public static class NXTestExtensions
         this ITestApplicationBuilder builder,
         TestClassMetadata[] testClasses,
         TestExecutionOptions? options = null,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken = default,
+        bool? runBenchmarks = null
     )
     {
-        TestFramework.Register(builder, testClasses, options, cancellationToken);
+        TestFramework.Register(builder, testClasses, options, cancellationToken, runBenchmarks);
         return builder;
     }
 }

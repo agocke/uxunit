@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -17,7 +18,35 @@ public sealed class TestGenerator : IIncrementalGenerator
 {
     private const string FactAttributeName = "NXTest.FactAttribute";
     private const string TheoryAttributeName = "NXTest.TheoryAttribute";
+    private const string BenchAttributeName = "NXTest.BenchAttribute";
     private const string InlineDataAttributeName = "NXTest.InlineDataAttribute";
+
+    private static readonly DiagnosticDescriptor UnsupportedReturnType = new(
+        id: "NXTEST001",
+        title: "Unsupported test method return type",
+        messageFormat: "Method '{0}' must return void or System.Threading.Tasks.Task; found '{1}'",
+        category: "NXTest",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    private static readonly DiagnosticDescriptor MissingBenchmarkData = new(
+        id: "NXTEST002",
+        title: "Parameterized benchmark has no data",
+        messageFormat: "Benchmark method '{0}' has parameters and must declare at least one InlineData row",
+        category: "NXTest",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    private static readonly DiagnosticDescriptor InvalidBenchmarkData = new(
+        id: "NXTEST003",
+        title: "Benchmark data does not match parameters",
+        messageFormat: "Benchmark method '{0}' expects {1} arguments, but an InlineData row supplies {2}",
+        category: "NXTest",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -26,7 +55,7 @@ public sealed class TestGenerator : IIncrementalGenerator
             .ForAttributeWithMetadataName(
                 FactAttributeName,
                 predicate: static (node, _) => node is MethodDeclarationSyntax,
-                transform: static (ctx, ct) => GetTestMethodInfo(ctx, isTheory: false, ct))
+                transform: static (ctx, ct) => GetTestMethodInfo(ctx, TestMethodKind.Fact, ct))
             .Where(static m => m is not null)!;
 
         // Register Theory attributes
@@ -34,19 +63,86 @@ public sealed class TestGenerator : IIncrementalGenerator
             .ForAttributeWithMetadataName(
                 TheoryAttributeName,
                 predicate: static (node, _) => node is MethodDeclarationSyntax,
-                transform: static (ctx, ct) => GetTestMethodInfo(ctx, isTheory: true, ct))
+                transform: static (ctx, ct) => GetTestMethodInfo(ctx, TestMethodKind.Theory, ct))
             .Where(static m => m is not null)!;
 
-        // Combine Fact and Theory methods
-        var allTestMethods = factMethods.Collect().Combine(theoryMethods.Collect())
-            .Select(static (pair, _) => pair.Left.AddRange(pair.Right));
+        var benchmarkMethods = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                BenchAttributeName,
+                predicate: static (node, _) => node is MethodDeclarationSyntax,
+                transform: static (ctx, ct) => GetTestMethodInfo(ctx, TestMethodKind.Benchmark, ct))
+            .Where(static m => m is not null)!;
+
+        var allTestMethods = factMethods
+            .Collect()
+            .Combine(theoryMethods.Collect())
+            .Combine(benchmarkMethods.Collect())
+            .Select(static (pair, _) =>
+                pair.Left.Left.AddRange(pair.Left.Right).AddRange(pair.Right));
+
+        context.RegisterSourceOutput(allTestMethods, static (spc, methods) =>
+        {
+            foreach (var method in methods.OfType<TestMethodInfo>())
+            {
+                if (!method.HasSupportedReturnType)
+                {
+                    spc.ReportDiagnostic(
+                        Diagnostic.Create(
+                            UnsupportedReturnType,
+                            method.MethodSyntax.ReturnType.GetLocation(),
+                            method.MethodSymbol.Name,
+                            method.MethodSymbol.ReturnType.ToDisplayString()
+                        )
+                    );
+                    continue;
+                }
+
+                if (method.Kind != TestMethodKind.Benchmark)
+                    continue;
+
+                var parameterCount = method.MethodSymbol.Parameters.Length;
+                if (parameterCount > 0 && method.InlineDataCases.IsEmpty)
+                {
+                    spc.ReportDiagnostic(
+                        Diagnostic.Create(
+                            MissingBenchmarkData,
+                            method.MethodSyntax.Identifier.GetLocation(),
+                            method.MethodSymbol.Name
+                        )
+                    );
+                    continue;
+                }
+
+                foreach (
+                    var testCase in method.InlineDataCases.Where(
+                        testCase => testCase.Arguments.Length != parameterCount
+                    )
+                )
+                {
+                    spc.ReportDiagnostic(
+                        Diagnostic.Create(
+                            InvalidBenchmarkData,
+                            method.MethodSyntax.Identifier.GetLocation(),
+                            method.MethodSymbol.Name,
+                            parameterCount,
+                            testCase.Arguments.Length
+                        )
+                    );
+                }
+            }
+        });
 
         // Group test methods by their containing class
         var testClassesWithMethods = allTestMethods
             .Select(static (methods, _) =>
             {
                 var grouped = methods
-                    .Where(m => m is not null)
+                    .Where(
+                        m =>
+                            m is not null
+                            && m.HasSupportedReturnType
+                            && m.HasValidBenchmarkData
+                    )
                     .GroupBy(
                         m => m!.ContainingClass,
                         SymbolEqualityComparer.Default);
@@ -90,7 +186,7 @@ public sealed class TestGenerator : IIncrementalGenerator
 
     private static TestMethodInfo? GetTestMethodInfo(
         GeneratorAttributeSyntaxContext context,
-        bool isTheory,
+        TestMethodKind kind,
         CancellationToken ct)
     {
         if (context.TargetSymbol is not IMethodSymbol methodSymbol)
@@ -105,7 +201,7 @@ public sealed class TestGenerator : IIncrementalGenerator
 
         ImmutableArray<InlineDataCase> inlineDataCases = ImmutableArray<InlineDataCase>.Empty;
 
-        if (isTheory)
+        if (kind is TestMethodKind.Theory or TestMethodKind.Benchmark)
         {
             // Collect all InlineData attributes
             var inlineDataAttributes = methodSymbol.GetAttributes()
@@ -131,7 +227,7 @@ public sealed class TestGenerator : IIncrementalGenerator
             containingClass,
             methodSymbol,
             methodSyntax,
-            isTheory,
+            kind,
             inlineDataCases);
     }
 
@@ -206,13 +302,19 @@ public sealed class TestGenerator : IIncrementalGenerator
 
         foreach (var method in testClass.Methods)
         {
-            if (method.IsTheory)
+            switch (method.Kind)
             {
-                GenerateTheoryMetadata(builder, method);
-            }
-            else
-            {
-                GenerateFactMetadata(builder, method);
+                case TestMethodKind.Theory:
+                    GenerateTheoryMetadata(builder, method);
+                    break;
+                case TestMethodKind.Benchmark:
+                    GenerateBenchmarkMetadata(builder, method, fqName);
+                    break;
+                case TestMethodKind.Fact:
+                    GenerateFactMetadata(builder, method);
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unknown test method kind: {method.Kind}");
             }
         }
 
@@ -227,6 +329,22 @@ public sealed class TestGenerator : IIncrementalGenerator
         TestClassWithMethods testClass,
         string fqName)
     {
+        var dispatchedMethods = testClass.Methods
+            .Where(method => method.Kind != TestMethodKind.Benchmark)
+            .ToImmutableArray();
+        if (dispatchedMethods.IsEmpty)
+        {
+            builder.AppendLine("TestDispatch = (_, methodName, _) =>");
+            builder.AppendLine("{");
+            builder.Indent();
+            builder.AppendLine(
+                "throw new global::System.InvalidOperationException(\"Unknown test method: \" + methodName);"
+            );
+            builder.Dedent();
+            builder.AppendLine("},");
+            return;
+        }
+
         builder.AppendLine("TestDispatch = async (receiver, methodName, theoryArgs) =>");
         builder.AppendLine("{");
         builder.Indent();
@@ -234,7 +352,7 @@ public sealed class TestGenerator : IIncrementalGenerator
         builder.AppendLine("{");
         builder.Indent();
 
-        foreach (var method in testClass.Methods)
+        foreach (var method in dispatchedMethods)
         {
             builder.AppendLine($"case \"{method.MethodSymbol.Name}\":");
             builder.AppendLine("{");
@@ -270,31 +388,54 @@ public sealed class TestGenerator : IIncrementalGenerator
 
         var target = isStatic ? fqName : $"(({fqName})receiver!)";
 
-        var argList = "";
+        var argList = GenerateArgumentUnpacking(
+            builder,
+            parameters,
+            "theoryArgs",
+            unpackSingleArgument: false
+        );
+        var awaitKeyword = isAsync ? "await " : "";
+        builder.AppendLine($"{awaitKeyword}{target}.{methodName}({argList});");
+    }
+
+    private static string GenerateArgumentUnpacking(
+        IndentingBuilder builder,
+        ImmutableArray<IParameterSymbol> parameters,
+        string argumentsVariable,
+        bool unpackSingleArgument)
+    {
         if (parameters.Length == 1)
         {
-            // Single argument is boxed directly (no ValueTuple wrapper).
-            argList = $"({parameters[0].Type.ToDisplayString()})theoryArgs!";
+            var argumentExpression =
+                $"({parameters[0].Type.ToDisplayString()}){argumentsVariable}!";
+            if (!unpackSingleArgument)
+                return argumentExpression;
+
+            builder.AppendLine(
+                $"var arg = {argumentExpression};"
+            );
+            return "arg";
         }
-        else if (parameters.Length > 1)
+
+        if (parameters.Length > 1)
         {
             // Cast straight to the concrete tuple type so arguments are strongly
             // typed (no per-element unboxing cast via ITuple's object indexer).
-            builder.AppendLine($"var args = ({BuildValueTupleType(parameters)})theoryArgs!;");
+            builder.AppendLine(
+                $"var args = ({BuildValueTupleType(parameters)}){argumentsVariable}!;"
+            );
 
             var sb = new StringBuilder();
             for (int i = 0; i < parameters.Length; i++)
             {
                 if (i > 0)
                     sb.Append(", ");
-
                 sb.Append($"args.Item{i + 1}");
             }
-            argList = sb.ToString();
+            return sb.ToString();
         }
 
-        var awaitKeyword = isAsync ? "await " : "";
-        builder.AppendLine($"{awaitKeyword}{target}.{methodName}({argList});");
+        return "";
     }
 
     private static string BuildValueTupleType(ImmutableArray<IParameterSymbol> parameters)
@@ -345,6 +486,17 @@ public sealed class TestGenerator : IIncrementalGenerator
         builder.AppendLine($"MethodName = \"{methodName}\",");
         builder.AppendLine($"IsAsync = {(isAsync ? "true" : "false")},");
         builder.AppendLine($"IsStatic = {(isStatic ? "true" : "false")},");
+        GenerateTestCases(builder, method);
+        builder.Dedent();
+        builder.AppendLine("},");
+    }
+
+    private static void GenerateTestCases(
+        IndentingBuilder builder,
+        TestMethodInfo method)
+    {
+        var parameters = method.MethodSymbol.Parameters;
+
         builder.AppendLine("TestCases = new TestCaseInfo[]");
         builder.AppendLine("{");
         builder.Indent();
@@ -382,6 +534,66 @@ public sealed class TestGenerator : IIncrementalGenerator
 
         builder.Dedent();
         builder.AppendLine("},");
+    }
+
+    private static void GenerateBenchmarkMetadata(
+        IndentingBuilder builder,
+        TestMethodInfo method,
+        string fqName)
+    {
+        var methodName = method.MethodSymbol.Name;
+        var isAsync = IsAsyncMethod(method.MethodSymbol);
+        var isStatic = method.MethodSymbol.IsStatic;
+
+        builder.AppendLine("new TestMethodMetadata.Benchmark");
+        builder.AppendLine("{");
+        builder.Indent();
+        builder.AppendLine($"MethodName = \"{methodName}\",");
+        builder.AppendLine($"IsAsync = {(isAsync ? "true" : "false")},");
+        builder.AppendLine($"IsStatic = {(isStatic ? "true" : "false")},");
+        GenerateTestCases(builder, method);
+        GenerateBenchmarkDispatch(builder, method, fqName);
+        builder.Dedent();
+        builder.AppendLine("},");
+    }
+
+    private static void GenerateBenchmarkDispatch(
+        IndentingBuilder builder,
+        TestMethodInfo method,
+        string fqName)
+    {
+        var methodName = method.MethodSymbol.Name;
+        var isAsync = IsAsyncMethod(method.MethodSymbol);
+        var parameters = method.MethodSymbol.Parameters;
+        var target = method.MethodSymbol.IsStatic
+            ? fqName
+            : $"(({fqName})receiver!)";
+        var asyncKeyword = isAsync ? "async " : "";
+        var awaitKeyword = isAsync ? "await " : "";
+
+        builder.AppendLine(
+            $"BenchmarkDispatch = {asyncKeyword}(receiver, benchmarkArgs, invocationCount) =>"
+        );
+        builder.AppendLine("{");
+        builder.Indent();
+        var argList = GenerateArgumentUnpacking(
+            builder,
+            parameters,
+            "benchmarkArgs",
+            unpackSingleArgument: true
+        );
+        builder.AppendLine("for (var i = 0; i < invocationCount; i++)");
+        builder.AppendLine("{");
+        builder.Indent();
+        builder.AppendLine($"{awaitKeyword}{target}.{methodName}({argList});");
+        builder.Dedent();
+        builder.AppendLine("}");
+        if (!isAsync)
+        {
+            builder.AppendLine(
+                "return global::System.Threading.Tasks.Task.CompletedTask;"
+            );
+        }
         builder.Dedent();
         builder.AppendLine("},");
     }
@@ -463,7 +675,22 @@ public sealed class TestGenerator : IIncrementalGenerator
 
     private static bool IsAsyncMethod(IMethodSymbol method)
     {
-        return method.ReturnType.Name == "Task" || method.ReturnType.Name == "ValueTask";
+        return IsTaskReturnType(method);
+    }
+
+    private static bool HasSupportedReturnType(IMethodSymbol method)
+    {
+        return method.ReturnsVoid || IsTaskReturnType(method);
+    }
+
+    private static bool IsTaskReturnType(IMethodSymbol method)
+    {
+        return method.ReturnType is INamedTypeSymbol
+        {
+            Name: "Task",
+            Arity: 0,
+        } returnType
+            && returnType.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks";
     }
 
     private static string GetSafeClassName(INamedTypeSymbol type)
@@ -548,26 +775,45 @@ public sealed class TestGenerator : IIncrementalGenerator
     }
 
     // Data model classes
+    private enum TestMethodKind
+    {
+        Fact,
+        Theory,
+        Benchmark,
+    }
+
     private sealed class TestMethodInfo
     {
         public INamedTypeSymbol ContainingClass { get; }
         public IMethodSymbol MethodSymbol { get; }
         public MethodDeclarationSyntax MethodSyntax { get; }
-        public bool IsTheory { get; }
+        public TestMethodKind Kind { get; }
         public ImmutableArray<InlineDataCase> InlineDataCases { get; }
+        public bool HasSupportedReturnType { get; }
+        public bool HasValidBenchmarkData { get; }
 
         public TestMethodInfo(
             INamedTypeSymbol containingClass,
             IMethodSymbol methodSymbol,
             MethodDeclarationSyntax methodSyntax,
-            bool isTheory,
+            TestMethodKind kind,
             ImmutableArray<InlineDataCase> inlineDataCases)
         {
             ContainingClass = containingClass;
             MethodSymbol = methodSymbol;
             MethodSyntax = methodSyntax;
-            IsTheory = isTheory;
+            Kind = kind;
             InlineDataCases = inlineDataCases;
+            HasSupportedReturnType = TestGenerator.HasSupportedReturnType(methodSymbol);
+            HasValidBenchmarkData =
+                kind != TestMethodKind.Benchmark
+                || (
+                    (methodSymbol.Parameters.IsEmpty || !inlineDataCases.IsEmpty)
+                    && inlineDataCases.All(
+                        testCase =>
+                            testCase.Arguments.Length == methodSymbol.Parameters.Length
+                    )
+                );
         }
     }
 

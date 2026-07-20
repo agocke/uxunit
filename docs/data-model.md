@@ -324,7 +324,7 @@ public sealed class TestMethodSymbol
     public IReadOnlyList<IParameterSymbol> Parameters => Symbol.Parameters;
     public IReadOnlyList<AttributeData> Attributes { get; init; } = Array.Empty<AttributeData>();
     public IReadOnlyList<TestDataSymbol> TestData { get; init; } = Array.Empty<TestDataSymbol>();
-    public bool IsAsync => Symbol.ReturnType.Name is "Task" or "ValueTask";
+    public bool IsAsync => Symbol.ReturnType.Name == "Task";
     public bool IsStatic => Symbol.IsStatic;
 }
 
@@ -342,7 +342,7 @@ public sealed class LifecycleMethodSymbol
     public IMethodSymbol Symbol { get; init; } = default!;
     public LifecycleMethodType Type { get; init; }
     public string MethodName => Symbol.Name;
-    public bool IsAsync => Symbol.ReturnType.Name is "Task" or "ValueTask";
+    public bool IsAsync => Symbol.ReturnType.Name == "Task";
     public bool IsStatic => Symbol.IsStatic;
 }
 ```
@@ -494,7 +494,7 @@ public static class NXTestDiagnostics
     public static readonly DiagnosticDescriptor InvalidTestMethodSignature = new(
         "UX0001",
         "Invalid test method signature",
-        "Test method '{0}' has an invalid signature. Test methods must be public and return void, Task, or ValueTask",
+        "Test method '{0}' has an invalid signature. Test methods must be public and return void or Task",
         "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);

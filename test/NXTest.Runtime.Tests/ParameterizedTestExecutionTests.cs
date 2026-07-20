@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using XunitAssert = Xunit.Assert;
+using static NXTest.RunResult;
 
 namespace NXTest.Runtime.Tests;
 
@@ -48,7 +49,7 @@ public class ParameterizedTestExecutionTests
         // Assert
         XunitAssert.Single(results);
         XunitAssert.Equal(1, executionCount);
-        XunitAssert.Equal(TestStatus.Passed, results[0].Status);
+        XunitAssert.IsType<TestResult.Passed>(results[0]);
     }
 
     [Fact]
@@ -89,7 +90,10 @@ public class ParameterizedTestExecutionTests
         // Assert
         XunitAssert.Equal(3, results.Length);
         XunitAssert.Equal(3, executionCount);
-        XunitAssert.All(results, r => XunitAssert.Equal(TestStatus.Passed, r.Status));
+        XunitAssert.All(
+            results,
+            result => XunitAssert.IsType<TestResult.Passed>(result)
+        );
     }
 
     [Fact]
@@ -173,8 +177,8 @@ public class ParameterizedTestExecutionTests
 
         // Assert
         XunitAssert.Equal(3, results.Length);
-        XunitAssert.Equal(2, results.Count(r => r.Status == TestStatus.Passed));
-        XunitAssert.Single(results, r => r.Status == TestStatus.Failed);
+        XunitAssert.Equal(2, results.Count(r => r is TestResult.Passed));
+        XunitAssert.Single(results, r => r is TestResult.Failed);
     }
 
     [Fact]
@@ -207,7 +211,7 @@ public class ParameterizedTestExecutionTests
 
         // Assert
         XunitAssert.Equal(2, results.Length);
-        XunitAssert.All(results, r => XunitAssert.NotNull(r.TestName));
+        XunitAssert.All(results, result => XunitAssert.NotNull(result.Name));
     }
 
     [Fact]
@@ -240,4 +244,5 @@ public class ParameterizedTestExecutionTests
         XunitAssert.Single(results);
         XunitAssert.Equal(1, executionCount);
     }
+
 }

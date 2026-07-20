@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using static NXTest.RunResult;
 
 namespace NXTest.Runtime;
 
@@ -35,47 +36,96 @@ public static class TestRunner
         var results = await TestExecutionEngine.ExecuteTestsAsync(testClasses, options, cancellationToken);
         var duration = DateTime.UtcNow - startTime;
 
-        // Count results
         int passed = 0, failed = 0, skipped = 0;
+        int completedBenchmarks = 0, failedBenchmarks = 0, skippedBenchmarks = 0;
         foreach (var result in results)
         {
-            switch (result.Status)
+            switch (result)
             {
-                case TestStatus.Passed:
+                case TestResult.Passed:
                     passed++;
                     break;
-                case TestStatus.Failed:
+                case TestResult.Failed test:
                     failed++;
+                    PrintFailure("test", test.Name, test.ClassName, test.ErrorMessage, test.StackTrace);
                     break;
-                case TestStatus.Skipped:
+                case TestResult.Faulted test:
+                    failed++;
+                    PrintFailure("test", test.Name, test.ClassName, test.ErrorMessage, test.StackTrace);
+                    break;
+                case TestResult.Skipped:
                     skipped++;
                     break;
-            }
-
-            // Print failures
-            if (result.Status == TestStatus.Failed && result.ErrorMessage != null)
-            {
-                Console.WriteLine($"failed {result.ClassName}.{result.TestName}");
-                Console.WriteLine($"  {result.ErrorMessage}");
-                if (!string.IsNullOrEmpty(result.StackTrace))
-                {
-                    Console.WriteLine(result.StackTrace);
-                }
-                Console.WriteLine();
+                case BenchmarkResult.Completed benchmark:
+                    completedBenchmarks++;
+                    PrintBenchmark(benchmark);
+                    break;
+                case BenchmarkResult.Failed benchmark:
+                    failedBenchmarks++;
+                    PrintFailure(
+                        "benchmark",
+                        benchmark.Name,
+                        benchmark.ClassName,
+                        benchmark.ErrorMessage,
+                        benchmark.StackTrace
+                    );
+                    break;
+                case BenchmarkResult.Skipped:
+                    skippedBenchmarks++;
+                    break;
             }
         }
 
-        PrintSummary(results.Length, passed, failed, skipped, duration);
+        PrintSummary(
+            passed,
+            failed,
+            skipped,
+            completedBenchmarks,
+            failedBenchmarks,
+            skippedBenchmarks,
+            duration
+        );
 
-        return failed > 0 ? 1 : 0;
+        return failed + failedBenchmarks > 0 ? 1 : 0;
     }
 
-    /// <summary>
-    /// Prints the test run summary.
-    /// </summary>
-    private static void PrintSummary(int total, int passed, int failed, int skipped, TimeSpan duration)
+    private static void PrintFailure(
+        string resultKind,
+        string name,
+        string className,
+        string? errorMessage,
+        string? stackTrace
+    )
     {
-        var statusText = failed > 0 ? "Failed!" : "Passed!";
+        Console.WriteLine($"failed {resultKind} {className}.{name}");
+        if (!string.IsNullOrEmpty(errorMessage))
+            Console.WriteLine($"  {errorMessage}");
+        if (!string.IsNullOrEmpty(stackTrace))
+            Console.WriteLine(stackTrace);
+        Console.WriteLine();
+    }
+
+    private static void PrintBenchmark(
+        BenchmarkResult.Completed result
+    )
+    {
+        Console.WriteLine(
+            $"benchmark {result.ClassName}.{result.Name}: "
+            + BenchmarkResultFormatter.Format(result.Statistics)
+        );
+    }
+
+    private static void PrintSummary(
+        int passed,
+        int failed,
+        int skipped,
+        int completedBenchmarks,
+        int failedBenchmarks,
+        int skippedBenchmarks,
+        TimeSpan duration
+    )
+    {
+        var statusText = failed + failedBenchmarks > 0 ? "Failed!" : "Passed!";
         var assemblyPath = Environment.ProcessPath ?? string.Empty;
         var arch = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString().ToLower();
 
@@ -83,10 +133,16 @@ public static class TestRunner
         var tfm = "net8.0"; // Default assumption for now
 
         Console.WriteLine($"Test run summary: {statusText} - {assemblyPath} ({tfm}|{arch})");
-        Console.WriteLine($"  total: {total}");
+        Console.WriteLine($"  total: {passed + failed + skipped}");
         Console.WriteLine($"  failed: {failed}");
         Console.WriteLine($"  succeeded: {passed}");
         Console.WriteLine($"  skipped: {skipped}");
+        if (completedBenchmarks + failedBenchmarks + skippedBenchmarks > 0)
+        {
+            Console.WriteLine($"  benchmarks completed: {completedBenchmarks}");
+            Console.WriteLine($"  benchmarks failed: {failedBenchmarks}");
+            Console.WriteLine($"  benchmarks skipped: {skippedBenchmarks}");
+        }
         Console.WriteLine($"  duration: {duration.TotalMilliseconds:F0}ms");
     }
 }

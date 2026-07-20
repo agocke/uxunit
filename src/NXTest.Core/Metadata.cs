@@ -30,12 +30,12 @@ public sealed class TestClassMetadata
 
 /// <summary>
 /// Represents metadata for a test method.
-/// Use nested Fact or Theory types to create instances.
+/// Use the nested Fact, Theory, or Benchmark types to create instances.
 /// </summary>
 public abstract class TestMethodMetadata
 {
     /// <summary>
-    /// Private constructor - use Fact or Theory nested types.
+    /// Private constructor - use the nested metadata types.
     /// </summary>
     private TestMethodMetadata() { }
 
@@ -59,6 +59,27 @@ public abstract class TestMethodMetadata
     }
 
     /// <summary>
+    /// Represents a benchmark method executed repeatedly to collect timing statistics.
+    /// </summary>
+    public sealed class Benchmark : TestMethodMetadata
+    {
+        public delegate Task DispatchFunc(
+            object? receiver,
+            object? arguments,
+            int invocationCount
+        );
+
+        public required DispatchFunc BenchmarkDispatch { get; init; }
+
+        /// <summary>
+        /// Gets the data cases measured independently by this benchmark.
+        /// An empty list represents one parameterless benchmark case.
+        /// </summary>
+        public IReadOnlyList<TestCaseInfo> TestCases { get; init; } =
+            Array.Empty<TestCaseInfo>();
+    }
+
+    /// <summary>
     /// Represents a Theory test - a parameterized test method executed multiple times with different arguments.
     /// </summary>
     public sealed class Theory : TestMethodMetadata
@@ -69,8 +90,7 @@ public abstract class TestMethodMetadata
         /// </summary>
         public IReadOnlyList<TestCaseInfo> TestCases { get; init; } =
             Array.Empty<TestCaseInfo>();
-
-           }
+    }
 }
 
 /// <summary>

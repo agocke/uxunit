@@ -84,6 +84,31 @@ public class CalculatorTests
 }
 ```
 
+## Benchmarks
+
+```csharp
+[Bench]
+public void ParsePayload()
+{
+    Benchmark.Consume(JsonSerializer.Deserialize<Message>(payload));
+}
+```
+
+```bash
+dotnet run --project perf/bench/bench.csproj -c Release -- \
+  --bench
+```
+
+Replace the project path as needed. Running the Microsoft Testing Platform
+executable directly is preferred because `dotnet test` hides benchmark output. The
+run stays quiet and NXTest prints a summary table of all benchmarks once they finish.
+
+Add `[InlineData(...)]` to a benchmark method to measure each parameter set as a
+separate benchmark case.
+
+See [Benchmarking](./benchmarking.md) for lifecycle semantics, result details, and
+the current measurement limitations.
+
 ## Setup and Cleanup
 
 Use standard xUnit patterns for test initialization and cleanup:

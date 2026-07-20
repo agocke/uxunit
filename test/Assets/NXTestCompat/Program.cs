@@ -20,3 +20,14 @@ class Program
         return await TestFramework.RunAsync(args, allTests, options);
     }
 }
+
+public static class BasicBenchmarks
+{
+    [Bench]
+    [InlineData(16)]
+    [InlineData(64)]
+    public static void ConsumeValue(int value)
+    {
+        Benchmark.Consume(value);
+    }
+}
