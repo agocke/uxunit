@@ -77,10 +77,13 @@ public void ParsePayload()
 }
 ```
 
-Benchmarks are excluded from normal test runs. Run only benchmarks with:
+Benchmarks are excluded from normal test runs. Run the benchmark project directly
+in Release mode so successful timing details are shown:
 
 ```bash
-dotnet test -- --bench
+dotnet run --project perf/bench/bench.csproj \
+  -p:EnableNXTestBenchmarks=true -c Release -- \
+  --bench --output Detailed
 ```
 
 Benchmarks can use theory-style `[InlineData]`; every data row is calibrated and

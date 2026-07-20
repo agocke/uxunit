@@ -50,12 +50,20 @@ Normal test runs exclude benchmarks:
 dotnet test
 ```
 
-Pass `--bench` to run benchmarks exclusively. Facts and theories are not run in
-benchmark mode:
+Run the benchmark project directly in Release mode to see timing details for
+successful benchmarks:
 
 ```bash
-dotnet test -- --bench
+dotnet run --project perf/bench/bench.csproj \
+  -p:EnableNXTestBenchmarks=true -c Release -- \
+  --bench --output Detailed
 ```
+
+Replace `perf/bench/bench.csproj` with the path to your benchmark project.
+`--bench` runs benchmarks exclusively; facts and theories are not run. The native
+Microsoft Testing Platform runner's `Detailed` output is important because
+`dotnet test` normally hides details for successful results, including benchmark
+timings.
 
 Programmatic callers can select the same mode with
 `TestExecutionOptions.RunBenchmarks = true`.

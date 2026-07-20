@@ -95,8 +95,14 @@ public void ParsePayload()
 ```
 
 ```bash
-dotnet test -- --bench
+dotnet run --project perf/bench/bench.csproj \
+  -p:EnableNXTestBenchmarks=true -c Release -- \
+  --bench --output Detailed
 ```
+
+Replace the project path as needed. Running the Microsoft Testing Platform
+executable directly is preferred because `dotnet test` hides timing details for
+successful benchmarks.
 
 Add `[InlineData(...)]` to a benchmark method to measure each parameter set as a
 separate benchmark case.
