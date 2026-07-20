@@ -669,6 +669,38 @@ public class ExecutionEngineTests
     }
 
     [XunitFact]
+    public void BenchmarkAnalysis_ConvergesDespiteOutliersWhenMedianIsStable()
+    {
+        // Nine tight samples and one large outlier. The mean-based margin of
+        // error would stay inflated and never converge, but the robust
+        // criterion recognizes that precision has been met.
+        double[] samples = [100, 100, 100, 100, 100, 100, 100, 100, 100, 300];
+        XunitAssert.True(BenchmarkAnalysis.HasMetPrecision(samples));
+    }
+
+    [XunitFact]
+    public void BenchmarkResultFormatter_NormalizesAllocationAndGcPerOperation()
+    {
+        double[] samples = [100, 100, 100, 100, 100, 100, 100, 100, 100, 100];
+        var statistics = BenchmarkAnalysis.Calculate(
+            samples,
+            operationsPerIteration: 100,
+            calibrationTargetReached: true,
+            warmupIterations: 5,
+            measurementConverged: true,
+            totalMeasurementTimestampTicks: System.Diagnostics.Stopwatch.Frequency,
+            new TestExecutionEngine.BenchmarkGcStatistics(1, 0, 0, 416_000)
+        );
+
+        var formatted = BenchmarkResultFormatter.Format(statistics);
+
+        // 10 samples x 100 operations = 1000 operations; 416000 bytes / 1000 = 416 B/op.
+        XunitAssert.Contains("Allocated: 416.00 B/op", formatted);
+        // 1 gen0 collection over 1000 operations = 1.0000 per 1000 operations.
+        XunitAssert.Contains("GC/1k op: 1.0000/0.0000/0.0000", formatted);
+    }
+
+    [XunitFact]
     public async Task ExecuteTestsAsync_RunsBenchmarksSequentially()
     {
         var running = 0;

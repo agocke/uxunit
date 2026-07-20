@@ -126,9 +126,15 @@ batch size computed from slower startup code.
 Before measurement the runner performs a single full garbage collection and settles
 pending finalizers, then records the heap state. It does **not** collect between
 samples, so realistic allocation costs remain visible. It records between ten and
-fifty samples; sampling stops when the 95% confidence interval's margin of error is
-at most 2% of the mean, or at the sample limit. A result that reaches the limit first
-reports a precision warning.
+fifty samples; sampling stops once the measurement is precise enough, or at the
+sample limit. A result that reaches the limit first reports a precision warning.
+
+Convergence uses a **robust** precision criterion. Rather than testing the mean's
+confidence interval — whose margin a few retained outliers can inflate indefinitely
+— the runner estimates dispersion from the median absolute deviation (scaled to a
+standard-deviation equivalent) and stops once that estimate's margin of error is at
+most 2% of the median. This lets a benchmark with a stable median and MAD converge
+even when an occasional slow sample would otherwise prevent it.
 
 Each sample times one calibrated batch and is divided by its operation count. The
 generated dispatch places the repetition loop around a direct method call, so clock
@@ -162,6 +168,11 @@ A completed benchmark produces `BenchmarkResult.Completed` with:
 - Tukey outlier count
 - Stability flag (whether distinct timing regimes were detected)
 - Gen0/Gen1/Gen2 collection counts and bytes allocated during measurement
+
+The `BenchmarkStatistics` record stores GC collection counts and allocated bytes as
+raw totals over the whole measurement window. The console formatter presents them
+**normalized per operation** — bytes allocated per operation and collections per
+1,000 operations — matching the convention used by BenchmarkDotNet.
 - Measured iteration count
 - Operations per iteration (after post-warmup recalibration)
 - Warmup iteration count and calibration/convergence status
