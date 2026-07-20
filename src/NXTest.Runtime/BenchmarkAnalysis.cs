@@ -9,6 +9,7 @@ internal static class BenchmarkAnalysis
 {
     internal const int MinimumSampleCount = 10;
     internal const double TargetRelativeMarginOfError = 0.02;
+    internal const double InstabilityThreshold = 0.10;
 
     private static readonly double[] StudentTCriticalValues95 =
     [
@@ -64,7 +65,8 @@ internal static class BenchmarkAnalysis
         bool calibrationTargetReached,
         int warmupIterations,
         bool measurementConverged,
-        long totalMeasurementTimestampTicks
+        long totalMeasurementTimestampTicks,
+        TestExecutionEngine.BenchmarkGcStatistics gcStatistics = default
     )
     {
         if (samples.Length == 0)
@@ -78,6 +80,9 @@ internal static class BenchmarkAnalysis
         var standardError = standardDeviation / Math.Sqrt(samples.Length);
         var marginOfError = GetCriticalValue95(samples.Length - 1) * standardError;
 
+        var median = Percentile(sortedSamples, 0.5);
+        var medianAbsoluteDeviation = CalculateMedianAbsoluteDeviation(samples, median);
+
         var firstQuartile = Percentile(sortedSamples, 0.25);
         var thirdQuartile = Percentile(sortedSamples, 0.75);
         var interquartileRange = thirdQuartile - firstQuartile;
@@ -89,6 +94,8 @@ internal static class BenchmarkAnalysis
             if (sample < lowerOutlierFence || sample > upperOutlierFence)
                 outlierCount++;
         }
+
+        var isStable = IsStable(samples);
 
         var retainedSamples = Array.AsReadOnly((double[])samples.Clone());
         return new BenchmarkStatistics(
@@ -102,15 +109,61 @@ internal static class BenchmarkAnalysis
             ),
             retainedSamples,
             summary.Mean,
-            Percentile(sortedSamples, 0.5),
+            median,
             sortedSamples[0],
             sortedSamples[^1],
             standardDeviation,
             standardError,
             Math.Max(0, summary.Mean - marginOfError),
             summary.Mean + marginOfError,
-            outlierCount
+            outlierCount,
+            medianAbsoluteDeviation,
+            isStable,
+            gcStatistics.Gen0Collections,
+            gcStatistics.Gen1Collections,
+            gcStatistics.Gen2Collections,
+            gcStatistics.AllocatedBytes
         );
+    }
+
+    /// <summary>
+    /// Detects non-stationary execution by comparing the median of the first
+    /// half of the (chronologically ordered) samples with the median of the
+    /// second half. A material difference signals distinct timing regimes,
+    /// so the run is reported as unstable rather than as a deceptively precise
+    /// mean. Comparing medians of sample groups also blunts the effect of
+    /// autocorrelation between adjacent samples.
+    /// </summary>
+    internal static bool IsStable(IReadOnlyList<double> samples)
+    {
+        if (samples.Count < 4)
+            return true;
+
+        var midpoint = samples.Count / 2;
+        var firstHalf = new double[midpoint];
+        var secondHalf = new double[samples.Count - midpoint];
+        for (var i = 0; i < midpoint; i++)
+            firstHalf[i] = samples[i];
+        for (var i = midpoint; i < samples.Count; i++)
+            secondHalf[i - midpoint] = samples[i];
+
+        Array.Sort(firstHalf);
+        Array.Sort(secondHalf);
+        var firstMedian = Percentile(firstHalf, 0.5);
+        var secondMedian = Percentile(secondHalf, 0.5);
+        if (firstMedian <= 0)
+            return true;
+
+        return Math.Abs(secondMedian - firstMedian) / firstMedian <= InstabilityThreshold;
+    }
+
+    private static double CalculateMedianAbsoluteDeviation(double[] samples, double median)
+    {
+        var deviations = new double[samples.Length];
+        for (var i = 0; i < samples.Length; i++)
+            deviations[i] = Math.Abs(samples[i] - median);
+        Array.Sort(deviations);
+        return Percentile(deviations, 0.5);
     }
 
     private static (double Mean, double SampleVariance) CalculateMeanAndVariance(

@@ -132,5 +132,11 @@ public sealed record BenchmarkStatistics(
     double StandardErrorNanoseconds,
     double ConfidenceIntervalLowerNanoseconds,
     double ConfidenceIntervalUpperNanoseconds,
-    int OutlierCount
+    int OutlierCount,
+    double MedianAbsoluteDeviationNanoseconds,
+    bool IsStable,
+    int Gen0Collections,
+    int Gen1Collections,
+    int Gen2Collections,
+    long AllocatedBytes
 );

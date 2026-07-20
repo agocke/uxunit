@@ -504,7 +504,7 @@ public class ExecutionEngineTests
         XunitAssert.InRange(benchmark.Iterations, 10, 50);
         XunitAssert.True(benchmark.OperationsPerIteration > 1);
         XunitAssert.True(benchmark.CalibrationTargetReached);
-        XunitAssert.InRange(benchmark.WarmupIterations, 3, 10);
+        XunitAssert.InRange(benchmark.WarmupIterations, 4, 20);
         XunitAssert.Equal(benchmark.Iterations, benchmark.SamplesNanoseconds.Count);
         XunitAssert.True(benchmark.MinimumNanoseconds <= benchmark.MeanNanoseconds);
         XunitAssert.True(benchmark.MeanNanoseconds <= benchmark.MaximumNanoseconds);
@@ -512,6 +512,9 @@ public class ExecutionEngineTests
         XunitAssert.True(benchmark.MedianNanoseconds <= benchmark.MaximumNanoseconds);
         XunitAssert.True(benchmark.StandardDeviationNanoseconds >= 0);
         XunitAssert.True(benchmark.StandardErrorNanoseconds >= 0);
+        XunitAssert.True(benchmark.MedianAbsoluteDeviationNanoseconds >= 0);
+        XunitAssert.True(benchmark.AllocatedBytes >= 0);
+        XunitAssert.True(benchmark.Gen0Collections >= 0);
         XunitAssert.True(
             benchmark.ConfidenceIntervalLowerNanoseconds <= benchmark.MeanNanoseconds
         );
@@ -573,6 +576,7 @@ public class ExecutionEngineTests
 
         XunitAssert.Equal(14.5, statistics.MeanNanoseconds);
         XunitAssert.Equal(5.5, statistics.MedianNanoseconds);
+        XunitAssert.Equal(2.5, statistics.MedianAbsoluteDeviationNanoseconds);
         XunitAssert.Equal(1, statistics.MinimumNanoseconds);
         XunitAssert.Equal(100, statistics.MaximumNanoseconds);
         XunitAssert.Equal(1, statistics.OutlierCount);
@@ -586,6 +590,64 @@ public class ExecutionEngineTests
             statistics.MeanNanoseconds
                 <= statistics.ConfidenceIntervalUpperNanoseconds
         );
+    }
+
+    [XunitFact]
+    public void BenchmarkAnalysis_FlagsDriftingSamplesAsUnstable()
+    {
+        // A clear regime shift between the first and second halves.
+        XunitAssert.False(
+            BenchmarkAnalysis.IsStable([100, 100, 100, 100, 200, 200, 200, 200])
+        );
+        // Steady timing across both halves.
+        XunitAssert.True(
+            BenchmarkAnalysis.IsStable([100, 101, 99, 100, 100, 99, 101, 100])
+        );
+        // Too few samples to judge; assume stable rather than cry wolf.
+        XunitAssert.True(BenchmarkAnalysis.IsStable([100, 200]));
+    }
+
+    [XunitFact]
+    public async Task ExecuteTestsAsync_RecalibratesBatchAfterWarmup()
+    {
+        // Simulate tiered compilation: the method is slow until it has been
+        // dispatched enough times, then speeds up. The post-warmup
+        // recalibration should grow the batch size beyond the cold pilot value.
+        var dispatchCount = 0;
+        var metadata = new TestClassMetadata
+        {
+            ClassName = "TieredBenchmarkClass",
+            TestMethods =
+            [
+                new TestMethodMetadata.Benchmark
+                {
+                    MethodName = "MeasureWork",
+                    BenchmarkDispatch = async (_, _, operations) =>
+                    {
+                        var callIndex = Interlocked.Increment(ref dispatchCount);
+                        // Cold calls are an order of magnitude slower per op.
+                        var perOpMicroseconds = callIndex <= 6 ? 200 : 20;
+                        var delayMs = Math.Min(operations * perOpMicroseconds / 1000, 30);
+                        if (delayMs > 0)
+                            await Task.Delay(delayMs);
+                    },
+                },
+            ],
+            CreateInstance = () => null,
+            TestDispatch = (_, _, _) => Task.CompletedTask,
+        };
+
+        var result = XunitAssert.IsType<BenchmarkResult.Completed>(
+            XunitAssert.Single(
+                await TestExecutionEngine.ExecuteTestsAsync(
+                    [metadata],
+                    new TestExecutionOptions { RunBenchmarks = true }
+                )
+            )
+        );
+
+        XunitAssert.True(result.Statistics.OperationsPerIteration > 1);
+        XunitAssert.InRange(result.Statistics.WarmupIterations, 4, 20);
     }
 
     [XunitFact]

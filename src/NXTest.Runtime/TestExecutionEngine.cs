@@ -14,16 +14,20 @@ namespace NXTest.Runtime;
 /// </summary>
 public static class TestExecutionEngine
 {
-    private const int BenchmarkMinimumWarmupIterationCount = 3;
-    private const int BenchmarkMaximumWarmupIterationCount = 10;
+    private const int BenchmarkMinimumWarmupIterationCount = 4;
+    private const int BenchmarkMaximumWarmupIterationCount = 20;
+    private const int BenchmarkWarmupStabilityWindow = 4;
+    private const double BenchmarkWarmupStabilityThreshold = 0.05;
     private const int BenchmarkMaximumMeasurementIterationCount = 50;
     private const int BenchmarkMaximumOperationsPerIteration = 1 << 24;
-    private static readonly TimeSpan BenchmarkMinimumIterationTime =
+    private static readonly TimeSpan BenchmarkPilotTargetTime =
         TimeSpan.FromMilliseconds(20);
+    private static readonly TimeSpan BenchmarkMeasurementTargetTime =
+        TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan BenchmarkCalibrationResolutionTime =
         TimeSpan.FromMilliseconds(1);
-    private static readonly TimeSpan BenchmarkMinimumWarmupTime =
-        TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan BenchmarkMaximumWarmupTime =
+        TimeSpan.FromMilliseconds(500);
 
     /// <summary>
     /// Executes all tests and returns results.
@@ -457,26 +461,30 @@ public static class TestExecutionEngine
                 cancellationToken
             );
 
-            var warmupStartTimestamp = Stopwatch.GetTimestamp();
-            var warmupIterations = 0;
-            do
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await dispatch(
-                    testClassInstance,
-                    benchmarkArguments,
-                    calibration.OperationsPerIteration
-                );
-                warmupIterations++;
-            }
-            while (
-                warmupIterations < BenchmarkMinimumWarmupIterationCount
-                || (
-                    warmupIterations < BenchmarkMaximumWarmupIterationCount
-                    && Stopwatch.GetElapsedTime(warmupStartTimestamp)
-                        < BenchmarkMinimumWarmupTime
-                )
+            var warmup = await WarmUp(
+                dispatch,
+                testClassInstance,
+                benchmarkArguments,
+                calibration.OperationsPerIteration,
+                cancellationToken
             );
+
+            // Recalibrate against warmed, tier-optimized code so each measured
+            // sample reflects steady-state throughput at the intended resolution.
+            var operationsPerIteration = RecalibrateOperations(
+                calibration.OperationsPerIteration,
+                warmup.StableNanosecondsPerOperation
+            );
+
+            // Settle the heap once before measuring. We deliberately avoid a
+            // per-sample collection so realistic allocation costs stay visible.
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            var gen0Before = GC.CollectionCount(0);
+            var gen1Before = GC.CollectionCount(1);
+            var gen2Before = GC.CollectionCount(2);
+            var allocatedBefore = GC.GetTotalAllocatedBytes();
 
             var samples = new List<double>(BenchmarkMaximumMeasurementIterationCount);
             long totalMeasurementTimestampTicks = 0;
@@ -488,14 +496,14 @@ public static class TestExecutionEngine
                 await dispatch(
                     testClassInstance,
                     benchmarkArguments,
-                    calibration.OperationsPerIteration
+                    operationsPerIteration
                 );
                 var elapsedTimestampTicks = Stopwatch.GetTimestamp() - startTimestamp;
                 totalMeasurementTimestampTicks += elapsedTimestampTicks;
                 samples.Add(
                     elapsedTimestampTicks
                     * (1_000_000_000d / Stopwatch.Frequency)
-                    / calibration.OperationsPerIteration
+                    / operationsPerIteration
                 );
 
                 if (BenchmarkAnalysis.HasMetPrecision(samples))
@@ -505,6 +513,13 @@ public static class TestExecutionEngine
                 }
             }
 
+            var gcStatistics = new BenchmarkGcStatistics(
+                GC.CollectionCount(0) - gen0Before,
+                GC.CollectionCount(1) - gen1Before,
+                GC.CollectionCount(2) - gen2Before,
+                Math.Max(0, GC.GetTotalAllocatedBytes() - allocatedBefore)
+            );
+
             totalStopwatch.Stop();
             return new BenchmarkResult.Completed(
                 testId,
@@ -513,10 +528,12 @@ public static class TestExecutionEngine
                 totalStopwatch.Elapsed,
                 CalculateBenchmarkStatistics(
                     samples.ToArray(),
-                    calibration,
-                    warmupIterations,
+                    operationsPerIteration,
+                    calibration.TargetReached,
+                    warmup.Iterations,
                     measurementConverged,
-                    totalMeasurementTimestampTicks
+                    totalMeasurementTimestampTicks,
+                    gcStatistics
                 )
             );
         }
@@ -557,13 +574,13 @@ public static class TestExecutionEngine
             var elapsed = Stopwatch.GetElapsedTime(startTimestamp);
 
             if (
-                elapsed >= BenchmarkMinimumIterationTime
+                elapsed >= BenchmarkPilotTargetTime
                 || operationsPerIteration >= BenchmarkMaximumOperationsPerIteration
             )
             {
                 return new CalibrationResult(
                     operationsPerIteration,
-                    elapsed >= BenchmarkMinimumIterationTime
+                    elapsed >= BenchmarkPilotTargetTime
                 );
             }
 
@@ -572,6 +589,123 @@ public static class TestExecutionEngine
                 elapsed
             );
         }
+    }
+
+    /// <summary>
+    /// Warms up the benchmark until the rolling window of per-operation batch
+    /// timings is stable, promoting the method through the JIT's compilation
+    /// tiers and settling static caches before measurement. Bounded by a
+    /// minimum iteration floor and a maximum iteration/time cap.
+    /// </summary>
+    private static async Task<WarmupResult> WarmUp(
+        TestMethodMetadata.Benchmark.DispatchFunc dispatch,
+        object? testClassInstance,
+        object? benchmarkArguments,
+        int operationsPerIteration,
+        CancellationToken cancellationToken
+    )
+    {
+        var nanosecondsPerOperation = new List<double>();
+        var warmupStartTimestamp = Stopwatch.GetTimestamp();
+        var iterations = 0;
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var startTimestamp = Stopwatch.GetTimestamp();
+            await dispatch(
+                testClassInstance,
+                benchmarkArguments,
+                operationsPerIteration
+            );
+            var elapsedTimestampTicks = Stopwatch.GetTimestamp() - startTimestamp;
+            nanosecondsPerOperation.Add(
+                elapsedTimestampTicks
+                * (1_000_000_000d / Stopwatch.Frequency)
+                / operationsPerIteration
+            );
+            iterations++;
+
+            if (iterations < BenchmarkMinimumWarmupIterationCount)
+                continue;
+            if (iterations >= BenchmarkMaximumWarmupIterationCount)
+                break;
+            if (Stopwatch.GetElapsedTime(warmupStartTimestamp) >= BenchmarkMaximumWarmupTime)
+                break;
+            if (IsWarmupStable(nanosecondsPerOperation))
+                break;
+        }
+
+        return new WarmupResult(
+            iterations,
+            RecentMedian(nanosecondsPerOperation, BenchmarkWarmupStabilityWindow)
+        );
+    }
+
+    /// <summary>
+    /// Considers warmup stable when the most recent window of per-operation
+    /// timings varies by less than the configured relative threshold, which
+    /// captures both level shifts and monotonic drift (a trending signal
+    /// widens the window's spread).
+    /// </summary>
+    private static bool IsWarmupStable(IReadOnlyList<double> nanosecondsPerOperation)
+    {
+        if (nanosecondsPerOperation.Count < BenchmarkWarmupStabilityWindow)
+            return false;
+
+        var minimum = double.MaxValue;
+        var maximum = double.MinValue;
+        for (var i = nanosecondsPerOperation.Count - BenchmarkWarmupStabilityWindow;
+            i < nanosecondsPerOperation.Count;
+            i++)
+        {
+            minimum = Math.Min(minimum, nanosecondsPerOperation[i]);
+            maximum = Math.Max(maximum, nanosecondsPerOperation[i]);
+        }
+
+        var median = RecentMedian(nanosecondsPerOperation, BenchmarkWarmupStabilityWindow);
+        if (median <= 0)
+            return true;
+
+        return (maximum - minimum) / median <= BenchmarkWarmupStabilityThreshold;
+    }
+
+    private static double RecentMedian(IReadOnlyList<double> values, int windowSize)
+    {
+        var count = Math.Min(windowSize, values.Count);
+        if (count == 0)
+            return 0;
+
+        var window = new double[count];
+        for (var i = 0; i < count; i++)
+            window[i] = values[values.Count - count + i];
+        Array.Sort(window);
+
+        return count % 2 == 1
+            ? window[count / 2]
+            : (window[count / 2 - 1] + window[count / 2]) / 2;
+    }
+
+    /// <summary>
+    /// Recomputes the batch size against the warmed per-operation timing so the
+    /// measured samples target the intended per-sample duration. The pilot
+    /// calibration runs on cold, un-tiered code and therefore over-counts the
+    /// operations needed once the method is optimized.
+    /// </summary>
+    private static int RecalibrateOperations(
+        int pilotOperationsPerIteration,
+        double stableNanosecondsPerOperation
+    )
+    {
+        if (stableNanosecondsPerOperation <= 0)
+            return pilotOperationsPerIteration;
+
+        var targetNanoseconds = BenchmarkMeasurementTargetTime.TotalMilliseconds * 1_000_000d;
+        var projected = (long)Math.Ceiling(
+            targetNanoseconds / stableNanosecondsPerOperation
+        );
+        projected = Math.Max(projected, 1L);
+        return (int)Math.Min(projected, BenchmarkMaximumOperationsPerIteration);
     }
 
     private static int CalculateNextOperationCount(
@@ -589,7 +723,7 @@ public static class TestExecutionEngine
 
         var projectedOperations = (long)Math.Ceiling(
             operationsPerIteration
-            * (BenchmarkMinimumIterationTime.TotalSeconds / elapsed.TotalSeconds)
+            * (BenchmarkPilotTargetTime.TotalSeconds / elapsed.TotalSeconds)
             * 1.1
         );
         projectedOperations = Math.Max(projectedOperations, operationsPerIteration + 1L);
@@ -605,23 +739,38 @@ public static class TestExecutionEngine
 
     private static BenchmarkStatistics CalculateBenchmarkStatistics(
         double[] samples,
-        CalibrationResult calibration,
+        int operationsPerIteration,
+        bool calibrationTargetReached,
         int warmupIterations,
         bool measurementConverged,
-        long totalMeasurementTimestampTicks
+        long totalMeasurementTimestampTicks,
+        BenchmarkGcStatistics gcStatistics
     ) =>
         BenchmarkAnalysis.Calculate(
             samples,
-            calibration.OperationsPerIteration,
-            calibration.TargetReached,
+            operationsPerIteration,
+            calibrationTargetReached,
             warmupIterations,
             measurementConverged,
-            totalMeasurementTimestampTicks
+            totalMeasurementTimestampTicks,
+            gcStatistics
         );
 
     private readonly record struct CalibrationResult(
         int OperationsPerIteration,
         bool TargetReached
+    );
+
+    private readonly record struct WarmupResult(
+        int Iterations,
+        double StableNanosecondsPerOperation
+    );
+
+    internal readonly record struct BenchmarkGcStatistics(
+        int Gen0Collections,
+        int Gen1Collections,
+        int Gen2Collections,
+        long AllocatedBytes
     );
 
     internal static bool IsFailure(RunResult result) =>

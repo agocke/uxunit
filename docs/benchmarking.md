@@ -111,32 +111,59 @@ The count is bounded by an internal safety limit. This reaches a useful signal w
 fewer state-mutating pilot invocations than simple doubling. If the limit is reached
 first, the result reports a calibration warning.
 
-After calibration, the runner performs between three and ten unmeasured warmup
-iterations, continuing for at least 100 milliseconds when possible. It then records
-between ten and fifty samples. Sampling stops when the 95% confidence interval's
-margin of error is at most 2% of the mean, or at the sample limit. A result that
-reaches the limit first reports a precision warning.
+After calibration, the runner warms up with an *adaptive* stability condition rather
+than a fixed duration: it runs batches until the most recent window of per-operation
+timings varies by no more than a small relative threshold, which catches both level
+shifts and monotonic drift as a benchmark climbs the JIT's compilation tiers. Warmup
+runs for at least a few iterations and is bounded by an iteration and time cap.
+
+Because the pilot calibration measured cold, un-tiered code, the runner then
+**recalibrates** the batch size against the warmed per-operation timing, targeting
+roughly 50 milliseconds per sample. This keeps each measured sample large enough for
+good clock resolution once the method has reached steady state, instead of using a
+batch size computed from slower startup code.
+
+Before measurement the runner performs a single full garbage collection and settles
+pending finalizers, then records the heap state. It does **not** collect between
+samples, so realistic allocation costs remain visible. It records between ten and
+fifty samples; sampling stops when the 95% confidence interval's margin of error is
+at most 2% of the mean, or at the sample limit. A result that reaches the limit first
+reports a precision warning.
 
 Each sample times one calibrated batch and is divided by its operation count. The
-generated dispatch places the repetition loop around a direct method call, so clock,
+generated dispatch places the repetition loop around a direct method call, so clock
 and delegate dispatch overhead occur once per sample rather than once per operation;
 benchmark dispatch performs no string lookup. Cancellation checks and statistical
-analysis occur outside timing.
-This policy is internal and intentionally not configurable. Benchmarks run
-sequentially to reduce interference.
+analysis occur outside timing. This policy is internal and intentionally not
+configurable. Benchmarks run sequentially to reduce interference.
+
+### Stability and robust statistics
+
+In-process timing is prone to *non-stationary execution* — the timing can shift
+partway through a run due to late tiering, cache effects, or scheduling. The runner
+guards against reporting a deceptively precise mean over such a run by comparing the
+median of the first half of the samples with the median of the second half. When
+those regimes differ materially, the result is flagged as **unstable**. Comparing
+medians of sample groups also blunts the effect of autocorrelation between adjacent
+samples.
+
+Summary statistics lead with the **median** and **median absolute deviation (MAD)**,
+which are robust to the occasional slow sample; the mean and its confidence interval
+are retained as secondary measures.
 
 A completed benchmark produces `BenchmarkResult.Completed` with:
 
 - Total measured time
 - Raw per-operation samples
-- Mean and median
-- Minimum
-- Maximum
-- Sample standard deviation and standard error
+- Median and median absolute deviation (primary)
+- Mean, sample standard deviation, and standard error (secondary)
+- Minimum and maximum
 - 95% confidence interval for the mean
 - Tukey outlier count
+- Stability flag (whether distinct timing regimes were detected)
+- Gen0/Gen1/Gen2 collection counts and bytes allocated during measurement
 - Measured iteration count
-- Operations per iteration
+- Operations per iteration (after post-warmup recalibration)
 - Warmup iteration count and calibration/convergence status
 
 Outliers remain in all calculations. They are classified and reported rather than
@@ -150,12 +177,17 @@ test-oriented states; benchmark code does not model it as a passed test.
 ## Current Scope
 
 NXTest intentionally performs best-effort measurement in the test process. Benchmark
-mode excludes regular tests, and the pilot, warmup, and measurement stages reduce
-several important sources of noise without requiring process isolation.
+mode excludes regular tests, and the pilot, adaptive warmup, recalibration, and
+measurement stages reduce several important sources of noise without requiring
+process isolation.
 
 - Timing still includes loop and method-call overhead, although pilot batching
   amortizes clock and generated-dispatch overhead.
-- There is no overhead subtraction, baseline, or regression comparison.
+- There is no overhead subtraction, baseline, or regression comparison. A paired,
+  interleaved comparison mode (for A/B ratios with paired confidence intervals) would
+  be a natural future addition but is out of scope today.
+- Instability is detected and reported, but the runner does not model change points
+  or autocorrelation explicitly, nor does it bootstrap confidence intervals.
 - Parameterless benchmark signatures are documented but not yet diagnosed by the
   source generator.
 
