@@ -1,5 +1,6 @@
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -287,17 +288,19 @@ public sealed class TestGenerator : IIncrementalGenerator
 
         foreach (var method in testClass.Methods)
         {
-            if (method.Kind == TestMethodKind.Theory)
+            switch (method.Kind)
             {
-                GenerateTheoryMetadata(builder, method);
-            }
-            else if (method.Kind == TestMethodKind.Benchmark)
-            {
-                GenerateBenchmarkMetadata(builder, method, fqName);
-            }
-            else
-            {
-                GenerateFactMetadata(builder, method);
+                case TestMethodKind.Theory:
+                    GenerateTheoryMetadata(builder, method);
+                    break;
+                case TestMethodKind.Benchmark:
+                    GenerateBenchmarkMetadata(builder, method, fqName);
+                    break;
+                case TestMethodKind.Fact:
+                    GenerateFactMetadata(builder, method);
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unknown test method kind: {method.Kind}");
             }
         }
 

@@ -6,20 +6,8 @@ namespace NXTest.Runtime.Reporters;
 /// <summary>
 /// Console-based run result reporter.
 /// </summary>
-public sealed class ConsoleRunReporter : IRunResultReporter
+public sealed class ConsoleRunReporter(bool _verbose) : IRunResultReporter
 {
-    private readonly bool _verbose;
-    private int _completedResults;
-
-    /// <summary>
-    /// Initializes a new instance of the ConsoleRunReporter.
-    /// </summary>
-    /// <param name="verbose">Whether to show verbose output.</param>
-    public ConsoleRunReporter(bool verbose = false)
-    {
-        _verbose = verbose;
-    }
-
     public void ReportRunStart(RunInfo info)
     {
         Console.WriteLine($"NXTest Test Run Started - ID: {info.RunId}");
@@ -31,8 +19,6 @@ public sealed class ConsoleRunReporter : IRunResultReporter
 
     public void ReportResult(RunResult result)
     {
-        _completedResults++;
-
         if (!_verbose)
             return;
 
