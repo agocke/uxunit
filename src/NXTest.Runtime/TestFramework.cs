@@ -1,5 +1,6 @@
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,7 +18,6 @@ namespace NXTest.Runtime;
 public sealed class TestFramework : ITestFramework, IDataProducer
 {
     private const string s_benchmarkArgument = "--bench";
-    private const string s_outputArgument = "--output";
     private const string s_displayName = "nxtest Microsoft.Testing.Platform framework";
 
     public string Uid => "64e8dd3a-ae2c-448f-9481-587f0252bfb8";
@@ -34,6 +34,7 @@ public sealed class TestFramework : ITestFramework, IDataProducer
     private TestExecutionOptions _options;
     private readonly bool _runBenchmarks;
     private readonly CancellationToken _cancellationToken;
+    private readonly List<BenchmarkResult> _benchmarkResults = [];
 
 
     private TestFramework(
@@ -92,28 +93,13 @@ public sealed class TestFramework : ITestFramework, IDataProducer
 
     internal static string[] GetPlatformArguments(string[] args, bool runBenchmarks)
     {
-        var platformArgs = args
+        // Benchmark results are presented through our own summary table
+        // (see PrintBenchmarkSummary), so the platform output is left at its
+        // default verbosity to keep the run quiet. We only strip our own
+        // custom flag before handing the arguments to the platform.
+        return args
             .Where(arg => !string.Equals(arg, s_benchmarkArgument, StringComparison.Ordinal))
             .ToArray();
-
-        if (
-            !runBenchmarks
-            || platformArgs.Any(
-                arg =>
-                    string.Equals(arg, s_outputArgument, StringComparison.Ordinal)
-                    || arg.StartsWith(s_outputArgument + "=", StringComparison.Ordinal)
-            )
-        )
-        {
-            return platformArgs;
-        }
-
-        return
-        [
-            .. platformArgs,
-            s_outputArgument,
-            "Detailed",
-        ];
     }
 
     public async Task<CloseTestSessionResult> CloseTestSessionAsync(CloseTestSessionContext context)
@@ -171,6 +157,8 @@ public sealed class TestFramework : ITestFramework, IDataProducer
 
                 await RunAndPublishAsync(context, benchmark, stopCts, linkedCt);
             }
+
+            PrintBenchmarkSummary();
             return;
         }
 
@@ -245,16 +233,28 @@ public sealed class TestFramework : ITestFramework, IDataProducer
     {
         foreach (var result in results)
         {
+            if (result is BenchmarkResult benchmarkResult)
+                _benchmarkResults.Add(benchmarkResult);
+
             var testNode = result switch
             {
                 TestResult testResult => CreateTestNode(testResult),
-                BenchmarkResult benchmarkResult => CreateBenchmarkNode(benchmarkResult),
+                BenchmarkResult br => CreateBenchmarkNode(br),
                 _ => throw new InvalidOperationException(
                     $"Unknown run result type: {result.GetType()}"
                 ),
             };
             await context.MessageBus.PublishAsync(this, new TestNodeUpdateMessage(context.Request.Session.SessionUid, testNode));
         }
+    }
+
+    private void PrintBenchmarkSummary()
+    {
+        if (_benchmarkResults.Count == 0)
+            return;
+
+        Console.WriteLine();
+        Console.Write(BenchmarkSummaryFormatter.FormatSummary(_benchmarkResults));
     }
 
     private static TestNode CreateTestNode(TestResult result)
@@ -303,7 +303,7 @@ public sealed class TestFramework : ITestFramework, IDataProducer
             BenchmarkResult.Completed completed => new TestNode()
             {
                 Uid = fullyQualifiedName,
-                DisplayName = $"{fullyQualifiedName} ({FormatBenchmark(completed.Statistics)})",
+                DisplayName = fullyQualifiedName,
                 Properties = new PropertyBag(new PassedTestNodeStateProperty())
             },
             BenchmarkResult.Failed failed => new TestNode()
@@ -325,9 +325,6 @@ public sealed class TestFramework : ITestFramework, IDataProducer
             },
         };
     }
-
-    private static string FormatBenchmark(BenchmarkStatistics benchmark) =>
-        BenchmarkResultFormatter.Format(benchmark);
 
     public async Task<bool> IsEnabledAsync() => true;
 }

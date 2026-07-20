@@ -59,10 +59,10 @@ dotnet run --project perf/bench/bench.csproj -c Release -- \
 ```
 
 Replace `perf/bench/bench.csproj` with the path to your benchmark project.
-`--bench` runs benchmarks exclusively; facts and theories are not run. NXTest
-defaults the native Microsoft Testing Platform runner to `Detailed` output in
-benchmark mode because its normal output hides successful benchmark timings. Pass
-an explicit `--output` value to override this default.
+`--bench` runs benchmarks exclusively; facts and theories are not run. The run itself
+stays quiet — the platform's normal per-test output is used — and NXTest prints a
+single summary table once every benchmark has completed (see
+[Measurement and Results](#measurement-and-results)).
 
 Programmatic callers can select the same mode with
 `TestExecutionOptions.RunBenchmarks = true`.
@@ -220,14 +220,34 @@ A completed benchmark produces `BenchmarkResult.Completed` with:
 - Tukey outlier count
 - Stability flag (whether distinct timing regimes were detected)
 - Gen0/Gen1/Gen2 collection counts and bytes allocated during measurement
+- Measured iteration count, operations per iteration (after post-warmup
+  recalibration), warmup iteration count, and calibration/convergence status
 
 The `BenchmarkStatistics` record stores GC collection counts and allocated bytes as
-raw totals over the whole measurement window. The console formatter presents them
+raw totals over the whole measurement window. The console summary presents them
 **normalized per operation** — bytes allocated per operation and collections per
 1,000 operations — matching the convention used by BenchmarkDotNet.
-- Measured iteration count
-- Operations per iteration (after post-warmup recalibration)
-- Warmup iteration count and calibration/convergence status
+
+### The summary table
+
+Rather than printing details as each benchmark finishes, NXTest keeps the run quiet
+and prints a single aligned summary table once all benchmarks have completed:
+
+```
+Benchmark summary
+
+| Benchmark                               |  Median | Floor (P10) |     MAD |  Alloc/op |             GC/1k op |
+|-----------------------------------------|---------|-------------|---------|-----------|----------------------|
+| BasicBenchmarks.ConsumeValue(value: 64) | 2.11 ns |     2.11 ns | 0.00 ns | 0.00 B/op | 0.0000/0.0000/0.0000 |
+```
+
+The `GC/1k op` column reports Gen0/Gen1/Gen2 collections per 1,000 operations. A
+benchmark flagged as unstable is marked with `*`, one that did not converge with `!`,
+and one whose calibration hit the operation limit with `~`; these markers are
+explained in a `Notes` section below the table. Failed and skipped benchmarks are
+listed after the table. The mean, standard deviation, and confidence interval are
+kept in `BenchmarkResult.Completed` for programmatic consumers but are not shown in
+the table.
 
 Outliers remain in all calculations. They are classified and reported rather than
 silently discarded.

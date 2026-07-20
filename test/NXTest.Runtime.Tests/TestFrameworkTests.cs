@@ -6,26 +6,26 @@ namespace NXTest.Runtime.Tests;
 public class TestFrameworkTests
 {
     [XunitFact]
-    public void GetPlatformArguments_BenchmarkModeDefaultsToDetailedOutput()
+    public void GetPlatformArguments_StripsBenchmarkFlag()
     {
         var arguments = TestFramework.GetPlatformArguments(["--bench"], runBenchmarks: true);
 
-        XunitAssert.Equal(["--output", "Detailed"], arguments);
+        XunitAssert.Empty(arguments);
     }
 
     [XunitFact]
-    public void GetPlatformArguments_BenchmarkModePreservesExplicitOutput()
+    public void GetPlatformArguments_DoesNotInjectOutputVerbosity()
     {
         var arguments = TestFramework.GetPlatformArguments(
-            ["--bench", "--output", "Normal"],
+            ["--bench", "--timeout", "30s"],
             runBenchmarks: true
         );
 
-        XunitAssert.Equal(["--output", "Normal"], arguments);
+        XunitAssert.Equal(["--timeout", "30s"], arguments);
     }
 
     [XunitFact]
-    public void GetPlatformArguments_TestModeDoesNotChangeOutput()
+    public void GetPlatformArguments_TestModePassesArgumentsThrough()
     {
         var arguments = TestFramework.GetPlatformArguments([], runBenchmarks: false);
 

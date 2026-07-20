@@ -100,9 +100,8 @@ dotnet run --project perf/bench/bench.csproj -c Release -- \
 ```
 
 Replace the project path as needed. Running the Microsoft Testing Platform
-executable directly is preferred because `dotnet test` hides timing details for
-successful benchmarks. Benchmark mode automatically selects detailed output unless
-you pass an explicit `--output` value.
+executable directly is preferred because `dotnet test` hides benchmark output. The
+run stays quiet and NXTest prints a summary table of all benchmarks once they finish.
 
 Add `[InlineData(...)]` to a benchmark method to measure each parameter set as a
 separate benchmark case.
