@@ -216,6 +216,34 @@ public class DerivedTests : BaseTests
     }
 
     [Fact]
+    public Task GeneratesMetadataForTestClassWithGenericInheritedTests()
+    {
+        var source = """
+using NXTest;
+
+public class GenericBaseTests<T>
+{
+    [Fact]
+    public void InheritedFact()
+    {
+    }
+
+    [Theory]
+    [InlineData(42)]
+    public void InheritedTheory(T value)
+    {
+    }
+}
+
+[TestClass]
+public class DerivedGenericTests : GenericBaseTests<int>
+{
+}
+""";
+        return VerifyGenerator(source);
+    }
+
+    [Fact]
     public Task GeneratesSeparateFilesForDifferentClasses()
     {
         var source = """

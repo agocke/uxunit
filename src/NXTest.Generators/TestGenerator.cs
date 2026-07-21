@@ -268,7 +268,7 @@ public sealed class TestGenerator : IIncrementalGenerator
         var testClasses = ImmutableArray.CreateBuilder<TestClassWithMethods>();
         foreach (var testClass in candidateClasses)
         {
-            if (testClass.IsAbstract)
+            if (testClass.IsAbstract || HasTypeParameters(testClass))
             {
                 continue;
             }
@@ -289,11 +289,26 @@ public sealed class TestGenerator : IIncrementalGenerator
         return testClasses.ToImmutable();
     }
 
+    private static bool HasTypeParameters(INamedTypeSymbol testClass)
+    {
+        for (INamedTypeSymbol? currentClass = testClass;
+             currentClass is not null;
+             currentClass = currentClass.ContainingType)
+        {
+            if (!currentClass.TypeParameters.IsEmpty)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static ImmutableArray<TestMethodInfo> GetInheritedTestMethods(
         INamedTypeSymbol testClass,
         ImmutableArray<TestMethodInfo> methods)
     {
-        var classHierarchy = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+        var classHierarchy = new List<INamedTypeSymbol>();
         for (INamedTypeSymbol? currentClass = testClass;
              currentClass is not null;
              currentClass = currentClass.BaseType)
@@ -302,12 +317,49 @@ public sealed class TestGenerator : IIncrementalGenerator
         }
 
         return methods
-            .Where(method => classHierarchy.Contains(method.ContainingClass))
-            .Where(method =>
-                SymbolEqualityComparer.Default.Equals(method.ContainingClass, testClass) ||
-                (!method.MethodSymbol.IsStatic &&
-                 method.MethodSymbol.DeclaredAccessibility == Accessibility.Public))
+            .Select(method => GetInheritedTestMethod(testClass, classHierarchy, method))
+            .Where(static method => method is not null)
+            .Select(static (method, _) => method!)
             .ToImmutableArray();
+    }
+
+    private static TestMethodInfo? GetInheritedTestMethod(
+        INamedTypeSymbol testClass,
+        List<INamedTypeSymbol> classHierarchy,
+        TestMethodInfo method)
+    {
+        foreach (var containingClass in classHierarchy)
+        {
+            if (!SymbolEqualityComparer.Default.Equals(
+                    method.ContainingClass.OriginalDefinition,
+                    containingClass.OriginalDefinition))
+            {
+                continue;
+            }
+
+            bool isDeclaredOnTestClass = SymbolEqualityComparer.Default.Equals(
+                containingClass,
+                testClass);
+            if (!isDeclaredOnTestClass &&
+                (method.MethodSymbol.IsStatic ||
+                 method.MethodSymbol.DeclaredAccessibility != Accessibility.Public))
+            {
+                return null;
+            }
+
+            var substitutedMethod = containingClass
+                .GetMembers(method.MethodSymbol.Name)
+                .OfType<IMethodSymbol>()
+                .SingleOrDefault(candidate => SymbolEqualityComparer.Default.Equals(
+                    candidate.OriginalDefinition,
+                    method.MethodSymbol.OriginalDefinition));
+
+            return substitutedMethod is null
+                ? null
+                : method.WithMethodSymbol(containingClass, substitutedMethod);
+        }
+
+        return null;
     }
 
     private static void GenerateTestClassFile(
@@ -893,6 +945,18 @@ public sealed class TestGenerator : IIncrementalGenerator
                             testCase.Arguments.Length == methodSymbol.Parameters.Length
                     )
                 );
+        }
+
+        public TestMethodInfo WithMethodSymbol(
+            INamedTypeSymbol containingClass,
+            IMethodSymbol methodSymbol)
+        {
+            return new TestMethodInfo(
+                containingClass,
+                methodSymbol,
+                MethodSyntax,
+                Kind,
+                InlineDataCases);
         }
     }
 

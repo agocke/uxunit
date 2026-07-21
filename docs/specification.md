@@ -45,7 +45,7 @@ public class CalculatorTests
 
 #### Inherited Tests
 
-Use `[TestClass]` on each concrete subclass that should run the public tests from an abstract base class. The base class itself is not executed.
+Use `[TestClass]` on each concrete subclass that should run the public tests from an abstract base class. The base class itself is not executed. Generic base classes are supported when the marked subclass supplies all type arguments; open generic classes are not test classes.
 
 ```csharp
 public abstract class CalculatorContractTests
