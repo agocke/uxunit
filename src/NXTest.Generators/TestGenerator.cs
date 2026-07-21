@@ -16,6 +16,7 @@ namespace NXTest.Generators;
 [Generator(LanguageNames.CSharp)]
 public sealed class TestGenerator : IIncrementalGenerator
 {
+    private const string TestClassAttributeName = "NXTest.TestClassAttribute";
     private const string FactAttributeName = "NXTest.FactAttribute";
     private const string TheoryAttributeName = "NXTest.TheoryAttribute";
     private const string BenchAttributeName = "NXTest.BenchAttribute";
@@ -50,13 +51,23 @@ public sealed class TestGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        // Register explicitly marked test classes so they can include inherited tests.
+        var markedTestClasses = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                TestClassAttributeName,
+                predicate: static (node, _) => node is TypeDeclarationSyntax,
+                transform: static (ctx, _) => ctx.TargetSymbol as INamedTypeSymbol)
+            .Where(static c => c is not null)
+            .Select(static (c, _) => c!);
+
         // Register Fact attributes
         var factMethods = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 FactAttributeName,
                 predicate: static (node, _) => node is MethodDeclarationSyntax,
                 transform: static (ctx, ct) => GetTestMethodInfo(ctx, TestMethodKind.Fact, ct))
-            .Where(static m => m is not null)!;
+            .Where(static m => m is not null)
+            .Select(static (m, _) => m!);
 
         // Register Theory attributes
         var theoryMethods = context.SyntaxProvider
@@ -64,14 +75,16 @@ public sealed class TestGenerator : IIncrementalGenerator
                 TheoryAttributeName,
                 predicate: static (node, _) => node is MethodDeclarationSyntax,
                 transform: static (ctx, ct) => GetTestMethodInfo(ctx, TestMethodKind.Theory, ct))
-            .Where(static m => m is not null)!;
+            .Where(static m => m is not null)
+            .Select(static (m, _) => m!);
 
         var benchmarkMethods = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 BenchAttributeName,
                 predicate: static (node, _) => node is MethodDeclarationSyntax,
                 transform: static (ctx, ct) => GetTestMethodInfo(ctx, TestMethodKind.Benchmark, ct))
-            .Where(static m => m is not null)!;
+            .Where(static m => m is not null)
+            .Select(static (m, _) => m!);
 
         var allTestMethods = factMethods
             .Collect()
@@ -132,27 +145,16 @@ public sealed class TestGenerator : IIncrementalGenerator
             }
         });
 
-        // Group test methods by their containing class
+        // Existing tests are discovered from their methods. Explicitly marked classes
+        // additionally include public test methods declared by their base classes.
         var testClassesWithMethods = allTestMethods
-            .Select(static (methods, _) =>
-            {
-                var grouped = methods
-                    .Where(
-                        m =>
-                            m is not null
-                            && m.HasSupportedReturnType
-                            && m.HasValidBenchmarkData
-                    )
-                    .GroupBy(
-                        m => m!.ContainingClass,
-                        SymbolEqualityComparer.Default);
-
-                return grouped
-                    .Select(g => new TestClassWithMethods(
-                        (INamedTypeSymbol)g.Key!,
-                        g.OfType<TestMethodInfo>().ToImmutableArray()))
-                    .ToImmutableArray();
-            });
+            .Combine(markedTestClasses.Collect())
+            .Select(static (pair, _) =>
+                GetTestClassesWithMethods(
+                    pair.Left
+                        .Where(method => method.HasSupportedReturnType && method.HasValidBenchmarkData)
+                        .ToImmutableArray(),
+                    pair.Right));
 
         // Generate metadata file for each test class
         context.RegisterSourceOutput(testClassesWithMethods, static (spc, testClasses) =>
@@ -199,6 +201,15 @@ public sealed class TestGenerator : IIncrementalGenerator
         if (containingClass is null)
             return null;
 
+        return CreateTestMethodInfo(containingClass, methodSymbol, methodSyntax, kind);
+    }
+
+    private static TestMethodInfo CreateTestMethodInfo(
+        INamedTypeSymbol containingClass,
+        IMethodSymbol methodSymbol,
+        MethodDeclarationSyntax methodSyntax,
+        TestMethodKind kind)
+    {
         ImmutableArray<InlineDataCase> inlineDataCases = ImmutableArray<InlineDataCase>.Empty;
 
         if (kind is TestMethodKind.Theory or TestMethodKind.Benchmark)
@@ -229,6 +240,126 @@ public sealed class TestGenerator : IIncrementalGenerator
             methodSyntax,
             kind,
             inlineDataCases);
+    }
+
+    private static ImmutableArray<TestClassWithMethods> GetTestClassesWithMethods(
+        ImmutableArray<TestMethodInfo> methods,
+        ImmutableArray<INamedTypeSymbol> markedTestClasses)
+    {
+        var candidateClasses = new List<INamedTypeSymbol>();
+        var seenClasses = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+
+        foreach (var method in methods)
+        {
+            if (seenClasses.Add(method.ContainingClass))
+            {
+                candidateClasses.Add(method.ContainingClass);
+            }
+        }
+
+        foreach (var testClass in markedTestClasses)
+        {
+            if (seenClasses.Add(testClass))
+            {
+                candidateClasses.Add(testClass);
+            }
+        }
+
+        var testClasses = ImmutableArray.CreateBuilder<TestClassWithMethods>();
+        foreach (var testClass in candidateClasses)
+        {
+            if (testClass.IsAbstract || HasTypeParameters(testClass))
+            {
+                continue;
+            }
+
+            bool isExplicitlyMarked = markedTestClasses.Any(
+                markedClass => SymbolEqualityComparer.Default.Equals(markedClass, testClass));
+            var testMethods = isExplicitlyMarked
+                ? GetInheritedTestMethods(testClass, methods)
+                : methods.Where(method =>
+                    SymbolEqualityComparer.Default.Equals(method.ContainingClass, testClass)).ToImmutableArray();
+
+            if (!testMethods.IsEmpty)
+            {
+                testClasses.Add(new TestClassWithMethods(testClass, testMethods));
+            }
+        }
+
+        return testClasses.ToImmutable();
+    }
+
+    private static bool HasTypeParameters(INamedTypeSymbol testClass)
+    {
+        for (INamedTypeSymbol? currentClass = testClass;
+             currentClass is not null;
+             currentClass = currentClass.ContainingType)
+        {
+            if (!currentClass.TypeParameters.IsEmpty)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static ImmutableArray<TestMethodInfo> GetInheritedTestMethods(
+        INamedTypeSymbol testClass,
+        ImmutableArray<TestMethodInfo> methods)
+    {
+        var classHierarchy = new List<INamedTypeSymbol>();
+        for (INamedTypeSymbol? currentClass = testClass;
+             currentClass is not null;
+             currentClass = currentClass.BaseType)
+        {
+            classHierarchy.Add(currentClass);
+        }
+
+        return methods
+            .Select(method => GetInheritedTestMethod(testClass, classHierarchy, method))
+            .Where(static method => method is not null)
+            .Select(static (method, _) => method!)
+            .ToImmutableArray();
+    }
+
+    private static TestMethodInfo? GetInheritedTestMethod(
+        INamedTypeSymbol testClass,
+        List<INamedTypeSymbol> classHierarchy,
+        TestMethodInfo method)
+    {
+        foreach (var containingClass in classHierarchy)
+        {
+            if (!SymbolEqualityComparer.Default.Equals(
+                    method.ContainingClass.OriginalDefinition,
+                    containingClass.OriginalDefinition))
+            {
+                continue;
+            }
+
+            bool isDeclaredOnTestClass = SymbolEqualityComparer.Default.Equals(
+                containingClass,
+                testClass);
+            if (!isDeclaredOnTestClass &&
+                (method.MethodSymbol.IsStatic ||
+                 method.MethodSymbol.DeclaredAccessibility != Accessibility.Public))
+            {
+                return null;
+            }
+
+            var substitutedMethod = containingClass
+                .GetMembers(method.MethodSymbol.Name)
+                .OfType<IMethodSymbol>()
+                .SingleOrDefault(candidate => SymbolEqualityComparer.Default.Equals(
+                    candidate.OriginalDefinition,
+                    method.MethodSymbol.OriginalDefinition));
+
+            return substitutedMethod is null
+                ? null
+                : method.WithMethodSymbol(containingClass, substitutedMethod);
+        }
+
+        return null;
     }
 
     private static void GenerateTestClassFile(
@@ -814,6 +945,18 @@ public sealed class TestGenerator : IIncrementalGenerator
                             testCase.Arguments.Length == methodSymbol.Parameters.Length
                     )
                 );
+        }
+
+        public TestMethodInfo WithMethodSymbol(
+            INamedTypeSymbol containingClass,
+            IMethodSymbol methodSymbol)
+        {
+            return new TestMethodInfo(
+                containingClass,
+                methodSymbol,
+                MethodSyntax,
+                Kind,
+                InlineDataCases);
         }
     }
 

@@ -188,6 +188,62 @@ public static class StaticTheoryClass
     }
 
     [Fact]
+    public Task GeneratesMetadataForTestClassWithInheritedTests()
+    {
+        var source = """
+using NXTest;
+
+public abstract class BaseTests
+{
+    [Fact]
+    public void InheritedFact()
+    {
+    }
+
+    [Theory]
+    [InlineData(42)]
+    public void InheritedTheory(int value)
+    {
+    }
+}
+
+[TestClass]
+public class DerivedTests : BaseTests
+{
+}
+""";
+        return VerifyGenerator(source);
+    }
+
+    [Fact]
+    public Task GeneratesMetadataForTestClassWithGenericInheritedTests()
+    {
+        var source = """
+using NXTest;
+
+public class GenericBaseTests<T>
+{
+    [Fact]
+    public void InheritedFact()
+    {
+    }
+
+    [Theory]
+    [InlineData(42)]
+    public void InheritedTheory(T value)
+    {
+    }
+}
+
+[TestClass]
+public class DerivedGenericTests : GenericBaseTests<int>
+{
+}
+""";
+        return VerifyGenerator(source);
+    }
+
+    [Fact]
     public Task GeneratesSeparateFilesForDifferentClasses()
     {
         var source = """

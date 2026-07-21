@@ -8,7 +8,7 @@ This document provides a comprehensive specification of the NXTest testing frame
 
 ### Test Classes
 
-A test class is a plain class containing one or more methods marked with `[Fact]` or `[Theory]`. Test classes are discovered automatically from those methods.
+A test class is a plain class containing one or more methods marked with `[Fact]` or `[Theory]`. Test classes are discovered automatically from those methods. Apply `[TestClass]` to a concrete subclass to include public test methods declared by its base classes.
 
 #### Requirements
 - Must be public or internal
@@ -40,6 +40,29 @@ public class CalculatorTests
     {
         _calculator?.Dispose();
     }
+}
+```
+
+#### Inherited Tests
+
+Use `[TestClass]` on each concrete subclass that should run the public tests from an abstract base class. The base class itself is not executed. Generic base classes are supported when the marked subclass supplies all type arguments; open generic classes are not test classes.
+
+```csharp
+public abstract class CalculatorContractTests
+{
+    [Fact]
+    public void AddsTwoNumbers()
+    {
+        Assert.Equal(4, CreateCalculator().Add(2, 2));
+    }
+
+    protected abstract Calculator CreateCalculator();
+}
+
+[TestClass]
+public sealed class StandardCalculatorTests : CalculatorContractTests
+{
+    protected override Calculator CreateCalculator() => new();
 }
 ```
 
