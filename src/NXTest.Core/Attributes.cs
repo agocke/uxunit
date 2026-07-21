@@ -7,6 +7,15 @@ namespace NXTest;
 // allowing existing XUnit tests to work with NXTest without modification
 
 /// <summary>
+/// Marks a concrete class as a test class, including public test methods inherited from base classes.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class TestClassAttribute : Attribute
+{
+    public TestClassAttribute() { }
+}
+
+/// <summary>
 /// XUnit-compatible attribute for marking individual test methods.
 /// Maps directly to NXTest's TestAttribute.
 /// </summary>

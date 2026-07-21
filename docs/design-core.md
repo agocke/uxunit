@@ -116,7 +116,7 @@ public sealed class TestCaseMetadata
 
 ### Attributes
 
-Attributes are used to mark test methods and data. Test classes are discovered automatically from methods marked with test attributes.
+Attributes are used to mark test methods and data. Test classes are discovered automatically from methods marked with test attributes, or explicitly with `[TestClass]` when inheriting public tests from a base class.
 
 #### Test Marking Attributes
 
